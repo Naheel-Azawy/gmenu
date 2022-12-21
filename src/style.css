@@ -1,0 +1,31 @@
+#maincontainer {
+    background-color: rgba(0, 0, 0, 0.5);
+    padding-top: 20px;
+}
+
+#searchbox {
+    background: none;
+    border-color: #999;
+    color: #ccc;
+    margin-bottom: 20px;
+    margin-left: 32px;
+    margin-right: 32px;
+}
+
+#prompt {
+    margin-bottom: 20px;
+}
+
+flowboxchild {
+    transition-duration: 200ms;
+    background-color: rgba(0, 0, 0, 0);
+    box-shadow: none;
+    color: #aaa;
+    outline: none; /* https://askubuntu.com/a/1141668 */
+    border-radius: 10px;
+}
+
+flowboxchild:selected {
+    background-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+}

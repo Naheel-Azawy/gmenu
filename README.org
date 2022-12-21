@@ -1,0 +1,56 @@
+* GMenu
+Yet another dmenu-like utility
+
+** Why?
+I used to be that person who refuses to use anything but the original dmenu, with bunch of patches of course.
+[[https://github.com/Naheel-Azawy/dmenu][My fork of dmenu]] had lots of changes and even included icons, which I haven't seen anyone attempting to implement.
+But then, I had to face it. It's just impractical to write GUI with Xlib alone.
+Another reason is that I wanted something that works with touch screens. GTK handles that by default.
+
+GTK is used here because I don't like Qt. Should it be GTK4? Maybe someday.
+Vala is used because I'm in rush but I didn't want it to be too crappy
+
+** Installation
+#+begin_src shell
+  sudo make install
+#+end_src
+
+** Usage and screenshots
+Try ~gmenu --help~ for more.
+
+#+begin_src shell-script
+  gmenu apps
+#+end_src
+[[./screenshots/apps.png]]
+
+#+begin_src shell-script
+  gmenu power
+#+end_src
+[[./screenshots/power.png]]
+
+#+begin_src shell-script
+  printf 'hello\nhi\nwelcome\n' | gmenu
+#+end_src
+[[./screenshots/dmenu-0.png]]
+
+#+begin_src shell-script
+  {
+      echo hi
+      echo hello
+      echo '>>j {"name":"howdy","icon":"application-x-addon"}'
+      echo foo
+      echo '>>power'
+      echo bar
+      echo '>>desktops ~/.local/share/applications'
+  } | gmenu --list -d 15%x39% -i 16 -sf black -sb white -n 2
+#+end_src
+[[./screenshots/dmenu-1.png]]
+
+** Related links
+- [[https://tools.suckless.org/dmenu/][dmenu]]
+- [[https://github.com/Naheel-Azawy/dmenu][dmenu - personal fork]]
+- [[https://github.com/nwg-piotr/sgtk-menu][sgtk-menu]]
+- [[https://github.com/nwg-piotr/nwg-drawer][nwg-drawer]]
+
+** License
+GPL3
