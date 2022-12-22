@@ -1,6 +1,6 @@
 class Opts {
 	public string prompt   = null;
-	public string dims     = "40%x70%";
+	public string dims     = "12ix80%";
 	public string css      = null;
 	public int    index    = -1;
 	public int    isize    = 64;
