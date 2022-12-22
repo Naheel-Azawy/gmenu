@@ -1,14 +1,28 @@
 class Opts {
 	public string prompt   = null;
-	public string dims     = "12ix80%";
+	public string dims     = "40%x80%";
 	public string css      = null;
-	public int    index    = -1;
-	public int    isize    = 64;
+	public int    index    = -1; // none
+	public int    isize    = -1; // auto
 	public int    maxcols  = 7;
-	public int    maxlbl   = 15;
+	public int    maxlbl   = -1; // auto
 	public bool   horiz    = false;
 	public bool   nosearch = false;
 	public bool   stay     = false;
+
+	public void auto_set(int screen_width) {
+		if (screen_width >= 1920) {
+			if (this.isize == -1)
+				this.isize = 64;
+			if (this.maxlbl == -1)
+				this.maxlbl = 15;
+		} else {
+			if (this.isize == -1)
+				this.isize = 48;
+			if (this.maxlbl == -1)
+				this.maxlbl = 10;
+		}
+	}
 
 	public static void args_help(string[] args) {
 		print("usage: %s <CMD> [OPTION]...\n", args[0]);

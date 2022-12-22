@@ -96,6 +96,9 @@ class GMenuWin : Gtk.Window {
 		Gdk.Rectangle geo;
 		screen.get_monitor_geometry(display_num, out geo);
 
+		// auto opts
+		this.opts.auto_set(geo.width);
+
 		// dims
 		if (this.opts.dims != null) {
 			if (geo.width == 0 || geo.height == 0) {
@@ -110,7 +113,7 @@ class GMenuWin : Gtk.Window {
 				if (d[i].has_suffix("%")) {
 					res_dim[i] = (int) (float.parse(d[i][:-1]) * geo_arr[i] / 100);
 				} else if (d[i].has_suffix("i")) {
-					res_dim[i] = (int) (float.parse(d[i][:-1]) * opts.isize);
+					res_dim[i] = (int) (float.parse(d[i][:-1]) * this.opts.isize);
 				} else {
 					res_dim[i] = int.parse(d[i]);
 				}
