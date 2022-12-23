@@ -152,6 +152,11 @@ class Opts {
 				this.horiz   = true;
 				this.maxcols = 1;
 				this.maxlbl  = 1000;
+
+				if ((i + 1) < args.length && int.try_parse(args[i + 1])) {
+					// to preserve compatibility with dmenu's -l
+					++i;
+				}
 				break;
 
 			default:
