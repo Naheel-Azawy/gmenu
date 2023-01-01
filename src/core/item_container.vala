@@ -124,9 +124,18 @@ class ItemsContainer {
 		var cmd = item.exec;
 		if (cmd != null && cmd.length > 0) {
 			if (item.terminal) {
-				cmd = "$TERMINAL -e " + cmd; // TODO: make it more portable
+				var trm = get_terminal();
+				if (trm == null) {
+					stderr.printf("Set $TERMINAL or install one of %s\n",
+								  string.joinv(", ", terminals));
+					print(">>> %s\n", item.exec);
+				} else {
+					cmd = trm + " -e " + cmd;
+					system(cmd);
+				}
+			} else {
+				system(cmd);
 			}
-			system(cmd);
 		} else {
 			print("%s\n", item.name);
 		}

@@ -2,6 +2,15 @@ using Gee;
 
 const string NAME = "gmenu";
 
+const string[] terminals = {
+	"gtrm",
+	"st",
+	"foot",
+	"kitty",
+	"gnome-terminal",
+	"xterm"
+};
+
 string[]                 which_paths = null;
 HashMap<string, string?> which_cache = null;
 
@@ -49,4 +58,18 @@ int system(string cmd) {
     } catch (SpawnError e) {
         return -1;
     }
+}
+
+string? get_terminal() {
+	string trm = Environment.get_variable("TERMINAL");
+	if (trm != null) return trm;
+
+	foreach (var t in terminals) {
+		trm = which(t);
+		if (trm != null) {
+			return trm;
+		}
+	}
+
+	return null;
 }

@@ -1,9 +1,9 @@
 string? dotdesktop_str_parse(string line) {
 	string[] sp = line.split("=");
-	if (sp.length != 2) {
+	if (sp.length < 2) {
 		return null;
 	}
-	return sp[1].strip();
+	return string.joinv("=", sp[1:]).strip();
 }
 
 bool dotdesktop_bool_parse(string line) {
