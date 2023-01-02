@@ -67,6 +67,13 @@ class GMenuWin : Gtk.Window {
 
 		main_container.set_property("name", "maincontainer");
 
+		if (this.opts.prompt != null) {
+			var p = new Label(this.opts.prompt);
+			p.set_property("name", "prompt");
+			p.set_halign(Gtk.Align.START);
+			outer_box.pack_start(p, false, false, 0);
+		}
+
 		if (!this.opts.nosearch) {
 			this.search_entry = new Gtk.SearchEntry();
 			this.search_entry.set_property("name", "searchbox");
@@ -75,11 +82,6 @@ class GMenuWin : Gtk.Window {
 			outer_box.pack_start(this.search_entry, false, false, 0);
 		}
 
-		if (this.opts.prompt != null) {
-			var p = new Label(this.opts.prompt);
-			p.set_property("name", "prompt");
-			outer_box.pack_start(p, false, false, 0);
-		}
 		outer_box.pack_start(this.items_cont.box(), true, true, 0);
 
 		main_container.pack_start(outer_box, true, true, 0);
