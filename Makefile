@@ -2,21 +2,8 @@ PREFIX    = /usr/local
 BINPREFIX = $(DESTDIR)$(PREFIX)/bin
 ICONSDIR  = $(DESTDIR)$(PREFIX)/share/icons/hicolor/scalable/actions
 
-SRC =                              \
-	./build/style.vala             \
-	./src/utils.vala               \
-	./src/core/opts.vala           \
-	./src/core/item.vala           \
-	./src/core/item_container.vala \
-	./src/core/main_window.vala    \
-	./src/items/desktops.vala      \
-	./src/items/json.vala          \
-	./src/items/power.vala         \
-	./src/modes/yesno.vala         \
-	./src/modes/apps.vala          \
-	./src/modes/power.vala         \
-	./src/modes/dmenu.vala         \
-	./src/main.vala
+SRC = $(shell find ./src -name '*.vala') \
+	./build/style.vala
 
 FLAGS =            \
 	--pkg gtk+-3.0 \
@@ -34,6 +21,9 @@ all: ./build/gmenu
 ./build/gmenu: $(SRC)
 	valac $(FLAGS) $(SRC) -o ./build/gmenu
 
+C: $(SRC)
+	valac $(FLAGS) $(SRC) -C
+
 install:
 	mkdir -p $(BINPREFIX) $(ICONSDIR)
 	cp -f ./build/gmenu $(BINPREFIX)/
@@ -43,6 +33,7 @@ uninstall:
 	rm -f $(BINPREFIX)/gmenu
 
 clean:
+	find ./src -name '*.c' -exec rm '{}' \;
 	rm -rf ./build
 
-.PHONY: install uninstall clean
+.PHONY: install uninstall clean C
