@@ -97,31 +97,35 @@ class GMenuWin : Gtk.Window {
 		}
 		Gdk.Rectangle geo;
 		screen.get_monitor_geometry(display_num, out geo);
+		if (geo.width == 0 || geo.height == 0) {
+			geo.width  = 1920;
+			geo.height = 1080;
+		}
 
 		// auto opts
 		this.opts.auto_set(geo.width);
 
 		// dims
-		if (this.opts.dims != null) {
-			if (geo.width == 0 || geo.height == 0) {
-				geo.width  = 1920;
-				geo.height = 1080;
+		if (this.opts.dims == null) {
+			if (geo.width >= geo.height) {
+				this.opts.dims = "40%x80%";
+			} else {
+				this.opts.dims = "55%x50%";
 			}
-
-			string[] d = this.opts.dims.split("x");
-			int[] geo_arr = {geo.width, geo.height};
-			int[] res_dim = {0, 0};
-			for (int i = 0; i < 2; ++i) {
-				if (d[i].has_suffix("%")) {
-					res_dim[i] = (int) (float.parse(d[i][:-1]) * geo_arr[i] / 100);
-				} else if (d[i].has_suffix("i")) {
-					res_dim[i] = (int) (float.parse(d[i][:-1]) * this.opts.isize);
-				} else {
-					res_dim[i] = int.parse(d[i]);
-				}
-			}
-			this.set_default_size(res_dim[0], res_dim[1]);
 		}
+		string[] d = this.opts.dims.split("x");
+		int[] geo_arr = {geo.width, geo.height};
+		int[] res_dim = {0, 0};
+		for (int i = 0; i < 2; ++i) {
+			if (d[i].has_suffix("%")) {
+				res_dim[i] = (int) (float.parse(d[i][:-1]) * geo_arr[i] / 100);
+			} else if (d[i].has_suffix("i")) {
+				res_dim[i] = (int) (float.parse(d[i][:-1]) * this.opts.isize);
+			} else {
+				res_dim[i] = int.parse(d[i]);
+			}
+		}
+		this.set_default_size(res_dim[0], res_dim[1]);
 	}
 
 	private void on_search_change(Gtk.Editable self) {
