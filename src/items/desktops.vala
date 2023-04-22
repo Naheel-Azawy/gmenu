@@ -61,7 +61,10 @@ Item? dotdesktop_parse(string desktop_file) {
 				if (line.has_prefix("Exec=")) {
 					ret.exec = dotdesktop_str_parse(line);
 					if (ret.exec != null && ret.exec.contains("%")) {
-						ret.exec = ret.exec.split("%")[0].strip();
+						int exec_i = ret.exec.index_of("%");
+						ret.exec = ret.exec.substring(0, exec_i).strip() +
+							" " +
+							ret.exec.substring(exec_i + 2, -1).strip();
 					}
 				}
 			}
