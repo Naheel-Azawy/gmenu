@@ -10,6 +10,7 @@ class Item {
     public bool   terminal;
     public bool   confirm;
 
+	public  int          i    = 0;
 	public  GMenuWin     win  = null;
 	private Gtk.EventBox _box = null;
 

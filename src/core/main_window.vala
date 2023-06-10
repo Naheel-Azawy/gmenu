@@ -154,6 +154,7 @@ class GMenuWin : Gtk.Window {
 			ev.str != null && ev.str.length > 0 &&
 			search_char_allowed(ev.str[0])) {
 			this.search_entry.text += ev.str;
+			//this.search_entry.grab_focus();
 			this.search_entry.set_position(-1);
 
 		} else if (this.search_entry != null         &&
@@ -193,6 +194,7 @@ class GMenuWin : Gtk.Window {
 	}
 
 	public void push(Item item) {
+		item.i = this.items.length;
 		this.items += item;
 		this.items_cont.push(item);
 

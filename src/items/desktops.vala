@@ -71,7 +71,8 @@ Item? dotdesktop_parse(string desktop_file) {
 		}
 		return ret;
 	} catch (Error e) {
-		error("%s", e.message);
+		GLib.stderr.printf("%s\n", e.message);
+		return null;
 	}
 }
 

@@ -87,6 +87,9 @@ class ItemsContainer {
 	public void update() {
 		this.first = null;
 		this.flow.invalidate_filter();
+		if (this.first != null) {
+			this.select_n(this.first.i);
+		}
 	}
 
 	public void launch(Item item) {
