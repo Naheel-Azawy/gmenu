@@ -49,7 +49,7 @@ class ItemsContainer {
 	}
 
 	private bool filter_fun(Gtk.FlowBoxChild child) {
-		string p = this.phrase();
+		string p = this.phrase().down();
 		Item item;
 		bool ret;
 		if (p.length <= 0) {
@@ -57,7 +57,8 @@ class ItemsContainer {
 			ret = true;
 		} else {
 			item = this.child2item(child);
-			ret = item.name.down().contains(p.down());
+			ret = item.name.down().contains(p) ||
+				item.exec.down().contains(p);
 		}
 
 		if (ret && this.first == null && item != null) {
