@@ -18,6 +18,7 @@ Item? dotdesktop_parse(string desktop_file) {
 		GLib.stderr.printf("File '%s' doesn't exist.\n", file.get_path());
 		return null;
 	}
+	ret.desktop_file = file.get_path();
 
 	try {
 		bool is_readable = false;

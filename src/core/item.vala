@@ -9,6 +9,8 @@ class Item {
     public string comment;
     public bool   terminal;
     public bool   confirm;
+	public string desktop_file  = null;
+	public string uninstall_cmd = "";
 
 	public  int          i    = 0;
 	public  GMenuWin     win  = null;
@@ -104,7 +106,63 @@ class Item {
 		this._box.add(box);
 		this._box.enter_notify_event.connect(this.on_hover);
 
+		if (this.desktop_file != null) {
+			this._box.button_press_event.connect (ev => {
+				if (ev.type == EventType.BUTTON_PRESS && ev.button == 3) {
+					this.on_right_click();
+					return true;
+				}
+				return false;
+			});
+		}
+
 		return this._box;
+	}
+
+	private void on_right_click() {
+		bool old_stay = this.win.opts.stay;
+		this.win.opts.stay = true;
+		Gtk.Menu menu = new Gtk.Menu();
+		menu.deactivate.connect(() => this.win.opts.stay = old_stay);
+		menu.attach_to_widget(this._box, null);
+
+		Gtk.MenuItem menu_item;
+
+		menu_item = new Gtk.MenuItem.with_label("Desktop file location");
+		menu_item.activate.connect(ev => locate_file(this.desktop_file));
+		menu.add(menu_item);
+
+		menu_item = new Gtk.MenuItem.with_label("Edit desktop file");
+		menu_item.activate.connect(ev => edit(this.desktop_file));
+		menu.add(menu_item);
+
+		if (this.uninstall_cmd == "") {
+			this.uninstall_cmd = uninstall_cmd_of(this.desktop_file);
+		}
+		if (this.uninstall_cmd != null) {
+			menu_item = new Gtk.MenuItem.with_label("Uninstall");
+			menu_item.activate.connect(ev => this.pkg_uninstall());
+			menu.add(menu_item);
+		}
+
+		menu.show_all();
+		menu.popup_at_pointer(null);
+	}
+
+	private void pkg_uninstall() {
+		this.win.hide();
+		this.win.opts.stay = true;
+		var yn_win = new GMenuWin();
+		run_yesno(yn_win, "Uninstall " + this.name, yes => {
+			if (yes) {
+				run_on_terminal("sh -c '" +
+								"echo " + this.uninstall_cmd + "; " +
+								this.uninstall_cmd + "; " +
+								"echo Press enter to close; read _'");
+			}
+			Gtk.main_quit();
+		});
+		yn_win.show();
 	}
 
 	private string tooltip_text() {
