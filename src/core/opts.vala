@@ -9,6 +9,8 @@ class Opts {
 	public bool   horiz    = false;
 	public bool   nosearch = false;
 	public bool   stay     = false;
+	public bool   solid    = false;
+	public bool   full     = false;
 
 	public void auto_set(int screen_width) {
 		if (screen_width >= 1920) {
@@ -49,6 +51,8 @@ class Opts {
 		print("  -l, --list         -d '30%%x50%%' -n 0 -i 0 -h -c 1 --maxlbl 1000\n");
 		print("      --nosearch     no search bar\n");
 		print("      --stay         prevent quitting when out of focus\n");
+		print("      --solid        disable transparency\n");
+		print("      --full         fullscreen window\n");
 		print("      --help         show this help\n");
 		print("\n");
 		print("Input:\n");
@@ -142,6 +146,14 @@ class Opts {
 
 			case "--stay":
 				this.stay = true;
+				break;
+
+			case "--solid":
+				this.solid = true;
+				break;
+
+			case "--full":
+				this.full = true;
 				break;
 
 			case "--list":

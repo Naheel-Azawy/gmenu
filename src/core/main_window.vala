@@ -55,10 +55,12 @@ class GMenuWin : Gtk.Window {
 		}
 
 		// transparent window
-		var visual = screen.get_rgba_visual();
-		if (visual != null && screen.is_composited())
-			this.set_visual(visual);
-		this.set_app_paintable(true);
+		if (!this.opts.solid) {
+			var visual = screen.get_rgba_visual();
+			if (visual != null && screen.is_composited())
+				this.set_visual(visual);
+			this.set_app_paintable(true);
+		}
 
 		// layout
 		var main_container = new Box(Gtk.Orientation.VERTICAL, 0);
@@ -208,5 +210,8 @@ class GMenuWin : Gtk.Window {
 		this.resizable = false;
 		this.show_all();
 		this.resizable = true; // to stay floating in a tiling wm
+		if (this.opts.full) {
+			this.fullscreen();
+		}
 	}
 }
