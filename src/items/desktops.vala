@@ -77,7 +77,9 @@ Item? dotdesktop_parse(string desktop_file) {
 	}
 }
 
-void dotdesktop_add_from_dir(ref GLib.List<Item> list, string desktops_dir) {
+void dotdesktop_add_from_dir(ref GLib.List<Item> list,
+							 ref Gee.HashMap<string, bool> skip,
+							 string desktops_dir) {
 	try {
 		var directory = File.new_for_path(desktops_dir);
 		var enumerator = directory.enumerate_children(FileAttribute.STANDARD_NAME, 0);
@@ -88,8 +90,10 @@ void dotdesktop_add_from_dir(ref GLib.List<Item> list, string desktops_dir) {
 			if (file_info.get_name().has_suffix(".desktop")) {
 				path = desktops_dir + "/" + file_info.get_name();
 				i = dotdesktop_parse(path);
-				if (i != null) {
+				if (i != null &&
+					(!skip.has_key(i.name) || !skip[i.name])) {
 					list.append(i);
+					skip[i.name] = true; // avoid repeated desktops
 				}
 			}
 		}
@@ -99,9 +103,10 @@ void dotdesktop_add_from_dir(ref GLib.List<Item> list, string desktops_dir) {
 }
 
 GLib.List<Item> dotdesktop_from_dirs(string[] dirs) {
+	var skip = new Gee.HashMap<string, bool>();
 	var list = new GLib.List<Item>();
 	foreach (var d in dirs) {
-		dotdesktop_add_from_dir(ref list, d);
+		dotdesktop_add_from_dir(ref list, ref skip, d);
 	}
 	list.sort((a, b) => GLib.strcmp(a.name, b.name));
 	return list;
