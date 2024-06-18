@@ -80,6 +80,9 @@ Item? dotdesktop_parse(string desktop_file) {
 void dotdesktop_add_from_dir(ref GLib.List<Item> list,
 							 ref Gee.HashMap<string, bool> skip,
 							 string desktops_dir) {
+	if (!FileUtils.test(desktops_dir, FileTest.IS_DIR)) {
+		return;
+	}
 	try {
 		var directory = File.new_for_path(desktops_dir);
 		var enumerator = directory.enumerate_children(FileAttribute.STANDARD_NAME, 0);
