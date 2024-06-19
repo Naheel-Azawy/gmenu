@@ -77,20 +77,57 @@ class ItemsContainer {
 		this.flow.insert(item.box(), -1);
 	}
 
-	public void select_n(int n) {
-		var child = this.flow.get_child_at_index(n);
+	public FlowBoxChild? selected_child() {
+		List<unowned FlowBoxChild> c = this.win.items_cont
+			.flow.get_selected_children();
+		if (c.length() > 0) {
+			return c.data;
+		}
+		return null;
+	}
+
+	public Item? selected_item() {
+		FlowBoxChild child = this.selected_child();
+		if (child != null) {
+			return this.child2item(child);
+		}
+		return null;
+	}
+
+	public void select_child(FlowBoxChild child) {
 		if (child != null) {
 			child.grab_focus();
 			this.flow.select_child(child);
 		}
 	}
 
+	public void select_n(int n) {
+		this.select_child(this.flow.get_child_at_index(n));
+	}
+
+	public void select_item(Item i) {
+		var child = i.box().get_parent() as FlowBoxChild;
+		this.select_child(child);
+	}
+
+	public void select_first() {
+		if (this.first == null) {
+			this.select_n(0);
+		} else {
+			this.select_item(this.first);
+		}
+	}
+
+	public void unselect() {
+		FlowBoxChild child = this.selected_child();
+		if (child != null) {
+			this.flow.unselect_child(child);
+		}
+	}
+
 	public void update() {
 		this.first = null;
 		this.flow.invalidate_filter();
-		/*if (this.first != null) {
-			this.select_n(this.first.i);
-		}*/
 	}
 
 	public void launch(Item item) {
@@ -103,10 +140,8 @@ class ItemsContainer {
 			run_yesno(yn_win, item.name, yes => {
 				if (yes) {
 					// because `item' above reference if probably deleted
-					List<unowned FlowBoxChild> c = this.win.items_cont
-						.flow.get_selected_children();
-					if (c.length() > 0) {
-						Item i = this.child2item(c.data);
+					Item i = this.selected_item();
+					if (i != null) {
 						this.launch_now(i);
 					}
 				} else {

@@ -109,7 +109,7 @@ string? get_terminal() {
 	}
 
 	GLib.stderr.printf("Set $TERMINAL or install one of %s\n",
-					   string.joinv(", ", terminals));
+					   string.joinv(", ", (string[]) terminals));
 	return null;
 }
 
@@ -133,7 +133,7 @@ string? get_editor() {
 	}
 
 	GLib.stderr.printf("Set $EDITOR or install one of %s\n",
-					   string.joinv(", ", terminals));
+					   string.joinv(", ", (string[]) terminals));
 	return null;
 }
 

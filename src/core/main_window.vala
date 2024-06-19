@@ -26,7 +26,7 @@ class GMenuWin : Gtk.Window {
 		}
 
 		this.destroy.connect(Gtk.main_quit);
-		this.key_release_event.connect(this.on_key_release);
+		this.key_press_event.connect(this.on_key);
 		this.focus_out_event.connect(this.on_focus_out);
 
 		// load css
@@ -63,7 +63,7 @@ class GMenuWin : Gtk.Window {
 		}
 
 		// layout
-		var main_container = new Box(Gtk.Orientation.VERTICAL, 0);
+		var main_container = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
         var outer_box      = new Gtk.Box(Gtk.Orientation.VERTICAL, 0);
 		this.items_cont    = new ItemsContainer(this);
 
@@ -81,6 +81,7 @@ class GMenuWin : Gtk.Window {
 			this.search_entry.set_property("name", "searchbox");
 			this.search_entry.set_sensitive(true);
 			this.search_entry.changed.connect(this.on_search_change);
+			this.search_entry.focus_in_event.connect(this.on_search_focus_in);
 			outer_box.pack_start(this.search_entry, false, false, 0);
 		}
 
@@ -89,20 +90,8 @@ class GMenuWin : Gtk.Window {
 		main_container.pack_start(outer_box, true, true, 0);
 		this.add(main_container);
 
-		// dims geometry FIXME: depricated code
-		var active = screen.get_active_window();
-		int display_num;
-		if (active != null) {
-			display_num = screen.get_monitor_at_window(active);
-		} else {
-			display_num = 0;
-		}
-		Gdk.Rectangle geo;
-		screen.get_monitor_geometry(display_num, out geo);
-		if (geo.width == 0 || geo.height == 0) {
-			geo.width  = 1920;
-			geo.height = 1080;
-		}
+		// dims geometry
+		Gdk.Rectangle geo = this.geometry(screen);
 
 		// auto opts
 		this.opts.auto_set(geo.width);
@@ -130,10 +119,39 @@ class GMenuWin : Gtk.Window {
 		this.set_default_size(res_dim[0], res_dim[1]);
 	}
 
+	private Gdk.Rectangle geometry(Gdk.Screen screen) {
+		Gdk.Rectangle geo = {0};
+		// Gdk.Window  active  = screen.get_active_window();
+		// Gdk.Monitor monitor = display.get_monitor_at_window(active);
+		// Since the above is deprecated and no alternatives were found,
+		// we work around by getting the monitor at the current position
+		// of the cursor's device
+		Gdk.Display display = screen.get_display();
+		Seat        seat    = display.get_default_seat();
+		Device?     mouse   = seat.get_pointer();
+		if (mouse != null) {
+			int x, y;
+			Gdk.Window wing = display.get_default_group();
+			wing.get_device_position(mouse, out x, out y, null);
+			Gdk.Monitor monitor = display.get_monitor_at_point(x, y);
+			geo = monitor.get_geometry();
+		}
+		if (geo.width == 0 || geo.height == 0) {
+			geo.width  = 1920;
+			geo.height = 1080;
+		}
+		return geo;
+	}
+
 	private void on_search_change(Gtk.Editable self) {
 		if (this.items_cont != null) {
 			this.items_cont.update();
 		}
+	}
+
+	private bool on_search_focus_in(Gtk.Widget self, Gdk.EventFocus ev) {
+		this.items_cont.unselect();
+		return false;
 	}
 
 	private static bool search_char_allowed(char target) {
@@ -146,25 +164,24 @@ class GMenuWin : Gtk.Window {
 		return false;
 	}
 
-	private bool on_key_release(Gtk.Widget self, Gdk.EventKey ev) {
-		if (ev.type != Gdk.EventType.KEY_RELEASE) {
-			return true;
-		}
-
+	private bool on_key(Gtk.Widget self, Gdk.EventKey ev) {
 		if (this.search_entry != null           &&
 			!this.search_entry.has_focus        &&
 			ev.str != null && ev.str.length > 0 &&
 			search_char_allowed(ev.str[0])) {
 			this.search_entry.text += ev.str;
-			//this.search_entry.grab_focus();
+			this.search_entry.grab_focus();
 			this.search_entry.set_position(-1);
+			return true;
 
 		} else if (this.search_entry != null         &&
 				   !this.search_entry.has_focus      &&
 				   this.search_entry.text.length > 0 &&
 				   ev.keyval == Gdk.Key.BackSpace) {
 			this.search_entry.text = this.search_entry.text[:-1];
+			this.search_entry.grab_focus();
 			this.search_entry.set_position(-1);
+			return true;
 
 		} else if (this.search_entry != null &&
 				   ev.keyval == Gdk.Key.Return) {
@@ -172,10 +189,16 @@ class GMenuWin : Gtk.Window {
 			if (txt.has_prefix("$")) {
 				system(txt[1:]);
 				Gtk.main_quit();
-			} else if (txt != null && txt.length > 0) {
-				this.items_cont.launch_first();
-				Gtk.main_quit();
+			} else {
+				Item i = this.items_cont.selected_item();
+				if (i != null) {
+					this.items_cont.launch(i);
+				} else if (txt != null && txt.length > 0) {
+					this.items_cont.launch_first();
+					Gtk.main_quit();
+				}
 			}
+			return true;
 
 		} else if (ev.keyval == Gdk.Key.Escape) {
 			if (this.search_entry != null &&
@@ -184,9 +207,21 @@ class GMenuWin : Gtk.Window {
 			} else {
 				Gtk.main_quit();
 			}
+			return true;
+
+		} else if (ev.keyval == Gdk.Key.Right ||
+				   ev.keyval == Gdk.Key.Left  ||
+				   ev.keyval == Gdk.Key.Up    ||
+				   ev.keyval == Gdk.Key.Down) {
+			Item i = this.items_cont.selected_item();
+			if (i == null) {
+				this.items_cont.select_first();
+				return true;
+			}
+			return false;
 		}
 
-		return true;
+		return false;
 	}
 
 	private bool on_focus_out(Gtk.Widget self, Gdk.EventFocus ev) {

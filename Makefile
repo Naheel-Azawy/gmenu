@@ -6,6 +6,7 @@ SRC = $(shell find ./src -name '*.vala') \
 	./build/style.vala
 
 FLAGS =            \
+	-X -w          \
 	--pkg posix    \
 	--pkg gtk+-3.0 \
 	--pkg gee-0.8  \

@@ -49,6 +49,7 @@ class Item {
 		this.from_json(parser.get_root());
 	}
 
+	/* This is left here in case needed later for debugging
 	public string to_json() {
 		Json.Builder builder = new Json.Builder();
 
@@ -69,7 +70,7 @@ class Item {
 		Json.Node root = builder.get_root();
 		generator.set_root(root);
 		return generator.to_data(null);
-	}
+	} */
 
 	public Gtk.EventBox box() {
 		if (this._box != null) {
