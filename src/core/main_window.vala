@@ -14,6 +14,10 @@ class GMenuWin : Gtk.Window {
 	public ItemsContainer  items_cont   = null;
 	public Gtk.SearchEntry search_entry = null;
 
+	// used to avoid selection in initial hover
+	public int cursor_x = -1;
+	public int cursor_y = -1;
+
 	public void build() {
 		this.set_keep_above(true);
 		this.gravity = Gdk.Gravity.CENTER;
@@ -90,8 +94,11 @@ class GMenuWin : Gtk.Window {
 		main_container.pack_start(outer_box, true, true, 0);
 		this.add(main_container);
 
+		// initial cursor position
+		this.cursor_pos(out this.cursor_x, out this.cursor_y);
+
 		// dims geometry
-		Gdk.Rectangle geo = this.geometry(screen);
+		Gdk.Rectangle geo = this.geometry();
 
 		// auto opts
 		this.opts.auto_set(geo.width);
@@ -119,20 +126,30 @@ class GMenuWin : Gtk.Window {
 		this.set_default_size(res_dim[0], res_dim[1]);
 	}
 
-	private Gdk.Rectangle geometry(Gdk.Screen screen) {
+	public void cursor_pos(out int x, out int y) {
+		Gdk.Display display = this.get_screen().get_display();
+		Seat        seat    = display.get_default_seat();
+		Device?     mouse   = seat.get_pointer();
+		if (mouse != null) {
+			Gdk.Window wing = display.get_default_group();
+			wing.get_device_position(mouse, out x, out y, null);
+		} else {
+			x = y = -1;
+		}
+	}
+
+	private Gdk.Rectangle geometry() {
 		Gdk.Rectangle geo = {0};
 		// Gdk.Window  active  = screen.get_active_window();
 		// Gdk.Monitor monitor = display.get_monitor_at_window(active);
 		// Since the above is deprecated and no alternatives were found,
 		// we work around by getting the monitor at the current position
 		// of the cursor's device
+		Gdk.Screen  screen  = this.get_screen();
 		Gdk.Display display = screen.get_display();
-		Seat        seat    = display.get_default_seat();
-		Device?     mouse   = seat.get_pointer();
-		if (mouse != null) {
-			int x, y;
-			Gdk.Window wing = display.get_default_group();
-			wing.get_device_position(mouse, out x, out y, null);
+		int x, y;
+		this.cursor_pos(out x, out y);
+		if (x != -1 && y != -1) {
 			Gdk.Monitor monitor = display.get_monitor_at_point(x, y);
 			geo = monitor.get_geometry();
 		}
@@ -145,6 +162,7 @@ class GMenuWin : Gtk.Window {
 
 	private void on_search_change(Gtk.Editable self) {
 		if (this.items_cont != null) {
+			this.items_cont.unselect();
 			this.items_cont.update();
 		}
 	}

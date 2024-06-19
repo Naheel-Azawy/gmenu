@@ -5,9 +5,8 @@ class ItemsContainer {
 	private Gtk.FlowBox        flow;
 	private Gtk.ScrolledWindow scroll;
 
-	private Item first        = null;
-	public  int  hover_count  = 0; // changed below in Item
-	private int  margins      = 10;
+	private Item first   = null;
+	private int  margins = 10;
 
 	public ItemsContainer(GMenuWin win) {
 		this.win = win;

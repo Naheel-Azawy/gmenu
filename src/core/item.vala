@@ -179,12 +179,18 @@ class Item {
 
 	private bool on_hover(Gtk.Widget self, Gdk.EventCrossing ev) {
 		if (this.win != null && this.win.items_cont != null) {
-			this.win.items_cont.hover_count += 1;
-			if (this.win.items_cont.hover_count == 1) {
-				return true;
-			} else if (this.win.items_cont.hover_count >= 2 &&
-					   this._box != null) {
+			if (this.win.cursor_x == -2 &&
+				this.win.cursor_y == -2 &&
+				this._box != null) {
 				this._box.set_tooltip_text(this.tooltip_text());
+			} else {
+				int x, y;
+				this.win.cursor_pos(out x, out y);
+				if (x == this.win.cursor_x && y == this.win.cursor_y) {
+					return true;
+				}
+				this.win.cursor_x = -2; // cursor moved
+				this.win.cursor_y = -2;
 			}
 		}
 		var flowboxchild = self.get_parent()         as FlowBoxChild;
