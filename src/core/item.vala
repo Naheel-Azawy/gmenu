@@ -161,9 +161,8 @@ class Item {
 								this.uninstall_cmd + "; " +
 								"echo Press enter to close; read _'");
 			}
-			Gtk.main_quit();
+			main_end();
 		});
-		yn_win.show();
 	}
 
 	private string tooltip_text() {

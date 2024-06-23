@@ -1,4 +1,6 @@
 int load_power(GMenuWin win) {
+	// TODO: make the below customizable
+
 	if (!exists("systemctl")) {
 		stderr.printf("Error: systemctl does not exist\n");
 		return 1;

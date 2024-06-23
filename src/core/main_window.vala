@@ -18,7 +18,23 @@ class GMenuWin : Gtk.Window {
 	public int cursor_x = -1;
 	public int cursor_y = -1;
 
+	public int ret = 0;
+	private Mutex mx = Mutex();
+
 	public void build() {
+		if (this.opts.sync) {
+			this.build_real();
+			return;
+		}
+		GLib.Idle.add(() => {
+			mx.lock();
+			this.build_real();
+			mx.unlock();
+			return false;
+		});
+	}
+
+	private void build_real() {
 		this.set_keep_above(true);
 		this.gravity = Gdk.Gravity.CENTER;
         this.set_position(Gtk.WindowPosition.CENTER);
@@ -29,7 +45,7 @@ class GMenuWin : Gtk.Window {
 			this.title = "Menu";
 		}
 
-		this.destroy.connect(Gtk.main_quit);
+		this.destroy.connect(main_end);
 		this.key_press_event.connect(this.on_key);
 		this.focus_out_event.connect(this.on_focus_out);
 
@@ -124,6 +140,8 @@ class GMenuWin : Gtk.Window {
 			}
 		}
 		this.set_default_size(res_dim[0], res_dim[1]);
+
+		this.show_win();
 	}
 
 	public void cursor_pos(out int x, out int y) {
@@ -206,14 +224,14 @@ class GMenuWin : Gtk.Window {
 			var txt = this.search_entry.text;
 			if (txt.has_prefix("$")) {
 				system(txt[1:]);
-				Gtk.main_quit();
+				main_end();
 			} else {
 				Item i = this.items_cont.selected_item();
 				if (i != null) {
 					this.items_cont.launch(i);
 				} else if (txt != null && txt.length > 0) {
 					this.items_cont.launch_first();
-					Gtk.main_quit();
+					main_end();
 				}
 			}
 			return true;
@@ -223,7 +241,7 @@ class GMenuWin : Gtk.Window {
 				this.search_entry.text.length > 0) {
 				this.search_entry.text = "";
 			} else {
-				Gtk.main_quit();
+				main_end();
 			}
 			return true;
 
@@ -244,11 +262,37 @@ class GMenuWin : Gtk.Window {
 
 	private bool on_focus_out(Gtk.Widget self, Gdk.EventFocus ev) {
 		if (!this.opts.stay)
-			Gtk.main_quit();
+			main_end();
 		return false;
 	}
 
-	public void push(Item item) {
+	public void loading_update() {
+		if (this.search_entry == null) {
+			return;
+		}
+		string txt;
+		if (this.items.length == 0) {
+			txt = "Loading...";
+		} else {
+			txt = "Loading " +
+				this.items.length.to_string() +
+				" items...";
+		}
+		this.search_entry.set_placeholder_text(txt);
+	}
+
+	public void loading_end() {
+		GLib.Idle.add(() => {
+			mx.lock();
+			if (this.search_entry != null) {
+				this.search_entry.set_placeholder_text(null);
+			}
+			mx.unlock();
+			return false;
+		}, GLib.Priority.LOW);
+	}
+
+	private void push_real(Item item) {
 		item.i = this.items.length;
 		this.items += item;
 		this.items_cont.push(item);
@@ -257,9 +301,31 @@ class GMenuWin : Gtk.Window {
 		if (this.items.length - 1 == this.opts.index) {
 			this.items_cont.select_n(this.opts.index);
 		}
+
+		this.show_all();
 	}
 
-	public new void show() {
+	public void push(Item item, bool loading=false) {
+		if (this.opts.sync) {
+			this.push_real(item);
+			return;
+		}
+		GLib.Idle.add(() => {
+			mx.lock();
+			this.push_real(item);
+			if (loading) {
+				this.loading_update();
+			}
+			mx.unlock();
+			// because main loop would get stuck otherwise
+			while (Gtk.events_pending() && !main_ended) {
+				Gtk.main_iteration();
+			}
+			return false;
+		});
+	}
+
+	private void show_win() {
 		this.resizable = false;
 		this.show_all();
 		this.resizable = true; // to stay floating in a tiling wm

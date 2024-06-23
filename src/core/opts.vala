@@ -1,4 +1,5 @@
 class Opts {
+	public string mode     = "dmenu";
 	public string prompt   = null;
 	public string dims     = null; // auto
 	public string css      = null;
@@ -11,6 +12,7 @@ class Opts {
 	public bool   stay     = false;
 	public bool   solid    = false;
 	public bool   full     = false;
+	public bool   sync     = false;
 
 	public void auto_set(int screen_width) {
 		if (screen_width >= 1920) {
@@ -53,6 +55,7 @@ class Opts {
 		print("      --stay         prevent quitting when out of focus\n");
 		print("      --solid        disable transparency\n");
 		print("      --full         fullscreen window\n");
+		print("      --sync         wait for all input before showing\n");
 		print("      --help         show this help\n");
 		print("\n");
 		print("Input:\n");
@@ -64,13 +67,13 @@ class Opts {
 	}
 
 	public string? args_parse(string[] args) {
-		string mode = "dmenu";
+		this.mode = "dmenu";
 		for (int i = 1; i < args.length; ++i) {
 			switch (args[i]) {
 			case "yesno":
 			case "power":
 			case "apps":
-				mode = args[i];
+				this.mode = args[i];
 				break;
 
 			case "--prompt":
@@ -156,6 +159,10 @@ class Opts {
 				this.full = true;
 				break;
 
+			case "--sync":
+				this.sync = true;
+				break;
+
 			case "--list":
 			case "-l":
 				this.dims    = "30%x50%";
@@ -177,6 +184,6 @@ class Opts {
 			}
 		}
 
-		return mode;
+		return this.mode;
 	}
 }

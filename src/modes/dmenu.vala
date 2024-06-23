@@ -52,10 +52,12 @@ int run_dmenu(GMenuWin win) {
 
 	win.build();
 
-	string line;
-	while ((line = stdin.read_line()) != null && line != "END") {
+	string line = "";
+	while (!stdin.eof() &&
+		   (line = stdin.read_line()) != null &&
+		   line != "END") {
 		if (!parse_push_cmd_line(win, line)) {
-			win.push(new Item(line));
+			win.push(new Item(line), true);
 		}
 	}
 

@@ -144,10 +144,9 @@ class ItemsContainer {
 						this.launch_now(i);
 					}
 				} else {
-					Gtk.main_quit();
+					main_end();
 				}
 			});
-			yn_win.show();
 		}
 	}
 
@@ -169,7 +168,7 @@ class ItemsContainer {
 		} else {
 			print("%s\n", item.name);
 		}
-		Gtk.main_quit();
+		main_end();
 	}
 
 	public void launch_first() {
