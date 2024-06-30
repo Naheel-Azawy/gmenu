@@ -117,6 +117,23 @@ class ItemsContainer {
 		}
 	}
 
+	public void select_last() {
+		// be careful, this can be O(n)
+		var children = this.flow.get_children();
+		FlowBoxChild last = null;
+		unowned List<weak Gtk.Widget>? node = children.last();
+		while (node != null) {
+			if (node.data.visible) {
+				last = node.data as FlowBoxChild;
+				break;
+			}
+			node = node.prev;
+		}
+		if (last != null) {
+			this.select_child(last);
+		}
+	}
+
 	public void unselect() {
 		FlowBoxChild child = this.selected_child();
 		if (child != null) {

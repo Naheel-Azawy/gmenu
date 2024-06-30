@@ -251,7 +251,13 @@ class GMenuWin : Gtk.Window {
 				   ev.keyval == Gdk.Key.Down) {
 			Item i = this.items_cont.selected_item();
 			if (i == null) {
-				this.items_cont.select_first();
+				if (ev.keyval == Gdk.Key.Right ||
+					ev.keyval == Gdk.Key.Down) {
+					this.items_cont.select_first();
+				} else if (ev.keyval == Gdk.Key.Left  ||
+						   ev.keyval == Gdk.Key.Up) {
+					this.items_cont.select_last();
+				}
 				return true;
 			}
 			return false;
