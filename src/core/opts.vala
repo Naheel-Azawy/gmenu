@@ -1,5 +1,6 @@
 class Opts {
 	public string mode     = "dmenu";
+	public string title    = null;
 	public string prompt   = null;
 	public string dims     = null; // auto
 	public string css      = null;
@@ -38,7 +39,8 @@ class Opts {
 		print("  (NONE)  dmenu-like behavior\n");
 		print("\n");
 		print("Options:\n");
-		print("  -p, --prompt STR   title and prompt of the menu\n");
+		print("      --title  STR   title of the menu\n");
+		print("  -p, --prompt STR   prompt of the menu\n");
 		print("  -d, --dims STR     dimensions of the window (pixels by default, %: window percent, i: icon percent)\n");
 		print("  -s, --css STR      CSS file or string\n");
 		print("  -nb STR            normal item background color\n");
@@ -79,6 +81,10 @@ class Opts {
 			case "--prompt":
 			case "-p":
 				this.prompt = args[++i];
+				break;
+
+			case "--title":
+				this.title = args[++i];
 				break;
 
 			case "--dims":

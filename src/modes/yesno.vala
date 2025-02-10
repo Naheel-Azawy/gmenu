@@ -2,7 +2,7 @@ delegate void OnYesNoAns(bool yes);
 
 int run_yesno(GMenuWin win, string? q=null, OnYesNoAns? onans=null) {
 	if (win.opts.prompt == null) {
-		win.opts.prompt   = q == null ? "Are you sure?" : q + "?";
+		win.opts.prompt = q == null ? "Are you sure?" : q + "?";
 	}
 	win.opts.dims     = "20%x1%";
 	win.opts.index    = 0;

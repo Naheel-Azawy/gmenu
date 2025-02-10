@@ -39,7 +39,9 @@ class GMenuWin : Gtk.Window {
 		this.gravity = Gdk.Gravity.CENTER;
         this.set_position(Gtk.WindowPosition.CENTER);
 
-		if (this.opts.prompt != null) {
+		if (this.opts.title != null) {
+			this.title = this.opts.title;
+		} else if (this.opts.prompt != null) {
 			this.title = this.opts.prompt;
 		} else {
 			this.title = "Menu";

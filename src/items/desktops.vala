@@ -105,8 +105,7 @@ void dotdesktop_add_from_dir(ref GLib.List<Item> list,
 	}
 }
 
-GLib.List<Item> dotdesktop_from_dirs(string[] dirs) {
-	var skip = new Gee.HashMap<string, bool>();
+GLib.List<Item> dotdesktop_from_dirs(string[] dirs, ref Gee.HashMap<string, bool> skip) {
 	var list = new GLib.List<Item>();
 	foreach (var d in dirs) {
 		dotdesktop_add_from_dir(ref list, ref skip, d);
@@ -123,6 +122,33 @@ string[] dotdesktop_default_dirs() {
 	};
 }
 
+string dotdesktop_blacklist_path() {
+	return Environment.get_home_dir() + "/.local/share/applications/blacklist";
+}
+
+void dotdesktop_blacklist_fill(ref Gee.HashMap<string, bool> skip) {
+	var file = File.new_for_path(dotdesktop_blacklist_path());
+	if (!file.query_exists()) {
+		return;
+	}
+
+	try {
+		var dis = new DataInputStream(file.read());
+		string line;
+		while ((line = dis.read_line(null)) != null) {
+			line = line.strip();
+			skip[line] = true;
+		}
+	} catch (Error e) {
+		GLib.stderr.printf("%s\n", e.message);
+	}
+}
+
+void dotdesktop_blacklist_add(string name) {
+	FileStream fs = FileStream.open(dotdesktop_blacklist_path(), "a");
+	fs.puts(name + "\n");
+}
+
 void dotdesktop_push_from_dirs(GMenuWin win, string? dirs_str=null) {
 	string[] dirs;
 	if (dirs_str == null) {
@@ -134,7 +160,9 @@ void dotdesktop_push_from_dirs(GMenuWin win, string? dirs_str=null) {
 		}
 	}
 
-	GLib.List<Item> list = dotdesktop_from_dirs(dirs);
+	var skip = new Gee.HashMap<string, bool>();
+	dotdesktop_blacklist_fill(ref skip);
+	GLib.List<Item> list = dotdesktop_from_dirs(dirs, ref skip);
 	foreach (Item i in list) {
 		win.push(i);
 	}

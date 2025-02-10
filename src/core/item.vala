@@ -137,6 +137,10 @@ class Item {
 		menu_item.activate.connect(ev => edit(this.desktop_file));
 		menu.add(menu_item);
 
+		menu_item = new Gtk.MenuItem.with_label("Hide");
+		menu_item.activate.connect(ev => dotdesktop_blacklist_add(this.name));
+		menu.add(menu_item);
+
 		if (this.uninstall_cmd == "") {
 			this.uninstall_cmd = uninstall_cmd_of(this.desktop_file);
 		}
@@ -171,7 +175,7 @@ class Item {
 			res += ": " + this.comment;
 		}
 		if (this.exec != null && this.exec.length > 0) {
-			res += " (" + this.exec + ")";
+			res += " (" + this.exec.strip() + ")";
 		}
 		return res;
 	}
