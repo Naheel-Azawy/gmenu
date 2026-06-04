@@ -6,6 +6,7 @@ class Item {
     public string name;
     public string exec;
     public string icon;
+    public int    icon_sz;
     public string comment;
     public bool   terminal;
     public bool   confirm;
@@ -25,6 +26,7 @@ class Item {
 		this.name     = name;
 		this.exec     = exec;
 		this.icon     = icon;
+		this.icon_sz  = -1;
 		this.comment  = comment;
 		this.terminal = terminal;
 		this.confirm  = confirm;
@@ -35,6 +37,7 @@ class Item {
 		this.name     = elem.get_string_member_with_default("name",      "");
 		this.exec     = elem.get_string_member_with_default("exec",      "");
 		this.icon     = elem.get_string_member_with_default("icon",      "");
+		this.icon_sz  = (int) elem.get_int_member_with_default("icon-size", 0);
 		this.comment  = elem.get_string_member_with_default("comment",   "");
 		this.terminal = elem.get_boolean_member_with_default("terminal", false);
 	}
@@ -83,7 +86,7 @@ class Item {
 		var box = new Box(orien, 0);
 		var lbl = new Label(this.name);
 		var img = this.win.opts.isize <= 0 ? null : this.app_image(
-			this.icon, this.win.opts.isize);
+			this.icon, this.icon_sz > 0 ? this.icon_sz : this.win.opts.isize);
 
 		lbl.set_ellipsize(Pango.EllipsizeMode.END);
 		lbl.set_max_width_chars(this.win.opts.maxlbl);
@@ -96,7 +99,7 @@ class Item {
 			box.pack_start(lbl, true, true, 10);
 		} else {
 			lbl.set_halign(Gtk.Align.CENTER);
-            box.set_size_request(this.win.opts.isize * 2, this.win.opts.isize * 2);
+            // box.set_size_request(this.win.opts.isize * 2, this.win.opts.isize * 2);
             if (img != null) {
                 box.pack_start(img, true, true, 5);
 			}
@@ -203,26 +206,23 @@ class Item {
 	}
 
 	private Gtk.Image? app_image(string icon, int isize) {
-		Gdk.Pixbuf pixbuf;
-		var icon_theme = Gtk.IconTheme.get_default();
 		try {
 			if (icon.has_prefix("/")) {
-				pixbuf = new Gdk.Pixbuf.from_file_at_size(icon, isize, isize);
+				var pixbuf = new Gdk.Pixbuf.from_file_at_size(
+					icon, isize, isize);
+				return new Gtk.Image.from_pixbuf(pixbuf);
 			} else {
 				if (icon.has_suffix(".svg") || icon.has_suffix(".png")) {
 					icon = icon.split(".")[0];
 				}
-				pixbuf = icon_theme.load_icon(
-					icon, isize, Gtk.IconLookupFlags.FORCE_SIZE);
+				var img = new Gtk.Image.from_icon_name(
+					icon, Gtk.IconSize.MENU);
+				img.set_pixel_size(isize);
+				return img;
 			}
 		} catch (Error e) {
-			try {
-				pixbuf = icon_theme.load_icon(
-					"application-x-executable", isize, Gtk.IconLookupFlags.FORCE_SIZE);
-			} catch (Error e) {
-				return null;
-			}
+			return new Gtk.Image.from_icon_name(
+				"application-x-executable", isize);
 		}
-		return new Gtk.Image.from_pixbuf(pixbuf);
 	}
 }

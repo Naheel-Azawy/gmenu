@@ -124,7 +124,7 @@ class GMenuWin : Gtk.Window {
 		// dims
 		if (this.opts.dims == null) {
 			if (geo.width >= geo.height) {
-				this.opts.dims = "40%x80%";
+				this.opts.dims = "45%x80%";
 			} else {
 				this.opts.dims = "55%x50%";
 			}
