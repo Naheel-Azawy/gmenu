@@ -256,12 +256,29 @@ class GMenuWin : Gtk.Window {
 				if (ev.keyval == Gdk.Key.Right ||
 					ev.keyval == Gdk.Key.Down) {
 					this.items_cont.select_first();
-				} else if (ev.keyval == Gdk.Key.Left  ||
+				} else if (ev.keyval == Gdk.Key.Left ||
 						   ev.keyval == Gdk.Key.Up) {
 					this.items_cont.select_last();
 				}
 				return true;
+
+			} else if (ev.keyval == Gdk.Key.Left ||
+					   ev.keyval == Gdk.Key.Up) {
+				Item first = this.items_cont.first_item();
+				if (first.i == i.i) {
+					this.items_cont.select_last();
+					return true;
+				}
+
+			} else if (ev.keyval == Gdk.Key.Right ||
+					   ev.keyval == Gdk.Key.Down) {
+				Item last = this.items_cont.last_item();
+				if (last.i == i.i) {
+					this.items_cont.select_first();
+					return true;
+				}
 			}
+
 			return false;
 		}
 

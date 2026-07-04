@@ -109,28 +109,53 @@ class ItemsContainer {
 		this.select_child(child);
 	}
 
-	public void select_first() {
-		if (this.first == null) {
-			this.select_n(0);
-		} else {
-			this.select_item(this.first);
-		}
-	}
-
-	public void select_last() {
-		// be careful, this can be O(n)
+	public Item? last_item() {
+		// NOTE: be careful, this can be O(n)
 		var children = this.flow.get_children();
-		FlowBoxChild last = null;
+		FlowBoxChild last_child = null;
 		unowned List<weak Gtk.Widget>? node = children.last();
 		while (node != null) {
 			if (node.data.visible) {
-				last = node.data as FlowBoxChild;
+				last_child = node.data as FlowBoxChild;
 				break;
 			}
 			node = node.prev;
 		}
+		if (last_child == null) {
+			return null;
+		}
+		return this.child2item(last_child);
+	}
+
+	public Item? first_item() {
+		// NOTE: be careful, this can be O(n)
+		var children = this.flow.get_children();
+		FlowBoxChild first_child = null;
+		unowned List<weak Gtk.Widget>? node = children.first();
+		while (node != null) {
+			if (node.data.visible) {
+				first_child = node.data as FlowBoxChild;
+				break;
+			}
+			node = node.next;
+		}
+		if (first_child == null) {
+			return null;
+		}
+		return this.child2item(first_child);
+	}
+
+	public void select_last() {
+		var last = this.last_item();
 		if (last != null) {
-			this.select_child(last);
+			this.select_item(last);
+		}
+	}
+
+	public void select_first() {
+		var first = this.first_item();
+		if (first != null) {
+			this.select_item(first);
 		}
 	}
 
