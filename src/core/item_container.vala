@@ -222,4 +222,78 @@ class ItemsContainer {
 			this.launch(this.first);
 		}
 	}
+
+	/* public void scroll_to(Gtk.Widget widget) {
+		Gtk.Widget child = this.scroll.get_child();
+		if (child == null)
+			return;
+
+		int x, y;
+		widget.translate_coordinates(child, 0, 0, out x, out y);
+
+		Gtk.Allocation allocation;
+		widget.get_allocation(out allocation);
+
+		Gtk.Adjustment vadj = this.scroll.get_vadjustment();
+
+		double top = vadj.get_value();
+		double bottom = top + vadj.get_page_size();
+
+		if (y < top) {
+			vadj.set_value(y);
+		} else if (y + allocation.height > bottom) {
+			vadj.set_value(y + allocation.height - vadj.get_page_size());
+		}
+	}*/
+
+	public void smooth_scroll_to(Gtk.Widget widget) {
+		Gtk.Widget child = this.scroll.get_child();
+		if (child == null)
+			return;
+
+		int x, y;
+		if (!widget.translate_coordinates(child, 0, 0, out x, out y))
+			return;
+
+		Gtk.Allocation allocation;
+		widget.get_allocation(out allocation);
+
+		Gtk.Adjustment vadj = this.scroll.get_vadjustment();
+
+		double current = vadj.get_value();
+		double target = current;
+
+		double top = current;
+		double bottom = current + vadj.get_page_size();
+
+		if (y < top) {
+			target = y;
+		} else if (y + allocation.height > bottom) {
+			target = y + allocation.height - vadj.get_page_size();
+		}
+
+		target = target.clamp(
+			vadj.get_lower(),
+			vadj.get_upper() - vadj.get_page_size()
+			);
+
+		if (Math.fabs(target - current) < 1.0)
+			return;
+
+		double start = current;
+		int64 start_time = GLib.get_monotonic_time();
+
+		Timeout.add(16, () => {
+				double elapsed = (GLib.get_monotonic_time() - start_time) / 1000000.0;
+				double t = elapsed / 0.3; // 300 ms
+				if (t > 1.0) t = 1.0;
+
+				// Ease-in-out
+				t = t * t * (3.0 - 2.0 * t);
+
+				vadj.set_value(start + (target - start) * t);
+
+				return t < 1.0;
+			});
+	}
 }

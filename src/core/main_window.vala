@@ -364,7 +364,8 @@ class GMenuWin : Gtk.Window {
 		this.items_cont.push(item);
 
 		// set initial index
-		if (this.items.length - 1 == this.opts.index) {
+		if (this.opts.index >= 0 &&
+			this.items.length - 1 == this.opts.index) {
 			this.items_cont.select_n(this.opts.index);
 		}
 
@@ -383,6 +384,16 @@ class GMenuWin : Gtk.Window {
 				this.loading_update();
 			}
 			mx.unlock();
+
+			// scroll into initially selected item, if any
+			if (this.opts.index >= 0 &&
+				this.items.length > this.opts.index) {
+				FlowBoxChild child = this.items_cont.selected_child();
+				if (child != null) {
+					this.items_cont.smooth_scroll_to(child);
+				}
+			}
+
 			// because main loop would get stuck otherwise
 			while (Gtk.events_pending() && !main_ended) {
 				Gtk.main_iteration();
