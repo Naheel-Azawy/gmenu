@@ -109,6 +109,10 @@ class ItemsContainer {
 		this.select_child(child);
 	}
 
+	public Gtk.FlowBoxChild get_child_at_index(int n) {
+		return this.flow.get_child_at_index(n);
+	}
+
 	public Item? last_item() {
 		// NOTE: be careful, this can be O(n)
 		var children = this.flow.get_children();

@@ -279,6 +279,47 @@ class GMenuWin : Gtk.Window {
 				}
 			}
 
+			// go to next or prev line on right or left and the beginning or
+			// end of the line TODO: this fails when filtering, it goes over
+			// items which are not visible for some reason. Fix
+			if (ev.keyval == Gdk.Key.Right ||
+				ev.keyval == Gdk.Key.Left) {
+
+				var child = this.items_cont.selected_child();
+				bool forward = (ev.keyval == Gdk.Key.Right);
+
+				// No selection yet, or it's pointing at something the current
+				// filter has hidden: just jump to an end and consume the key.
+				if (child == null || !child.visible) {
+					if (forward) {
+						this.items_cont.select_first();
+					} else {
+						this.items_cont.select_last();
+					}
+					return true;
+				}
+
+				int delta = forward ? 1 : -1;
+				int idx = child.get_index() + delta;
+				Gtk.FlowBoxChild target = this.items_cont.get_child_at_index(idx);
+
+				while (target != null && !target.visible) {
+					// TODO: this appears to always be false; fix
+					// NOTE: be careful, this can be O(n)
+					idx += delta;
+					target = this.items_cont.get_child_at_index(idx);
+				}
+
+				if (target == null) {
+					// already at the first/last visible item; let the default
+					// handler run (e.g. so focus can leave the flowbox)
+					return false;
+				}
+
+				this.items_cont.select_child(target);
+				return true;
+			}
+
 			return false;
 		}
 
