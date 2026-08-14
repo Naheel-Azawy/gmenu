@@ -8,6 +8,7 @@ class Item {
     public string icon;
     public int    icon_sz;
     public string comment;
+    public string selected;
     public bool   terminal;
     public bool   confirm;
 	public string desktop_file  = null;
@@ -16,11 +17,14 @@ class Item {
 	public  int          i    = 0;
 	public  GMenuWin     win  = null;
 	private Gtk.EventBox _box = null;
+	private Gtk.Label    _lbl = null;
+	private bool         _flowbox_hooked = false;
 
 	public Item(string name="",
 				string exec="",
 				string icon="",
 				string comment="",
+				string selected="",
 				bool   terminal=false,
 				bool   confirm=false) {
 		this.name     = name;
@@ -28,6 +32,7 @@ class Item {
 		this.icon     = icon;
 		this.icon_sz  = -1;
 		this.comment  = comment;
+		this.selected = selected;
 		this.terminal = terminal;
 		this.confirm  = confirm;
 	}
@@ -39,6 +44,7 @@ class Item {
 		this.icon     = elem.get_string_member_with_default("icon",      "");
 		this.icon_sz  = (int) elem.get_int_member_with_default("icon-size", 0);
 		this.comment  = elem.get_string_member_with_default("comment",   "");
+		this.selected = elem.get_string_member_with_default("selected",  "");
 		this.terminal = elem.get_boolean_member_with_default("terminal", false);
 	}
 
@@ -65,6 +71,8 @@ class Item {
 		builder.add_string_value(this.icon);
 		builder.set_member_name("comment");
 		builder.add_string_value(this.comment);
+		builder.set_member_name("selected");
+		builder.add_string_value(this.selected);
 		builder.set_member_name("terminal");
 		builder.add_boolean_value(this.terminal);
 		builder.end_object();
@@ -84,31 +92,36 @@ class Item {
 			Gtk.Orientation.VERTICAL;
 
 		var box = new Box(orien, 0);
-		var lbl = new Label(this.name);
+		this._lbl = new Label(this.name);
 		var img = this.win.opts.isize <= 0 ? null : this.app_image(
 			this.icon, this.icon_sz > 0 ? this.icon_sz : this.win.opts.isize);
 
-		lbl.set_ellipsize(Pango.EllipsizeMode.END);
-		lbl.set_max_width_chars(this.win.opts.maxlbl);
+		this._lbl.set_ellipsize(Pango.EllipsizeMode.END);
+		this._lbl.set_max_width_chars(this.win.opts.maxlbl);
 
 		if (this.win.opts.horiz) {
-			lbl.set_halign(Gtk.Align.START);
+			this._lbl.set_halign(Gtk.Align.START);
 			if (img != null) {
 				box.pack_start(img, false, false, 0);
 			}
-			box.pack_start(lbl, true, true, 10);
+			box.pack_start(this._lbl, true, true, 10);
 		} else {
-			lbl.set_halign(Gtk.Align.CENTER);
+			this._lbl.set_halign(Gtk.Align.CENTER);
             // box.set_size_request(this.win.opts.isize * 2, this.win.opts.isize * 2);
             if (img != null) {
                 box.pack_start(img, true, true, 5);
 			}
-            box.pack_start(lbl, true, true, 5);
+            box.pack_start(this._lbl, true, true, 5);
+		}
+		if (this.win.opts.center) {
+			this._lbl.set_halign(Gtk.Align.CENTER);
+			this._lbl.set_justify(Gtk.Justification.CENTER);
 		}
 
 		this._box = new Gtk.EventBox();
 		this._box.add(box);
 		this._box.enter_notify_event.connect(this.on_hover);
+		this._box.map.connect(this.hook_flowbox_selection);
 
 		if (this.desktop_file != null) {
 			this._box.button_press_event.connect (ev => {
@@ -183,11 +196,45 @@ class Item {
 		return res;
 	}
 
+	private void update_lbl_text(FlowBoxChild flowboxchild) {
+		if (flowboxchild.is_selected() &&
+			this.selected != null && this.selected.length > 0) {
+			this._lbl.set_text(this.name + "\n" + this.selected);
+		} else {
+			this._lbl.set_text(this.name);
+		}
+	}
+
+	private void hook_flowbox_selection() {
+		if (this._flowbox_hooked) {
+			return;
+		}
+		var flowboxchild = this._box.get_parent() as FlowBoxChild;
+		if (flowboxchild == null) {
+			return;
+		}
+		var flowbox = flowboxchild.get_parent() as FlowBox;
+		if (flowbox == null) {
+			return;
+		}
+
+		this._flowbox_hooked = true;
+		flowbox.selected_children_changed.connect(() => {
+			this.update_lbl_text(flowboxchild);
+		});
+
+		// set initial text in case the child is already selected
+		this.update_lbl_text(flowboxchild);
+	}
+
 	private bool on_hover(Gtk.Widget self, Gdk.EventCrossing ev) {
+		this.hook_flowbox_selection();
+
 		if (this.win != null && this.win.items_cont != null) {
 			if (this.win.cursor_x == -2 &&
 				this.win.cursor_y == -2 &&
-				this._box != null) {
+				this._box != null &&
+				!this.win.opts.notooltip) {
 				this._box.set_tooltip_text(this.tooltip_text());
 			} else {
 				int x, y;

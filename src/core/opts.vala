@@ -9,6 +9,8 @@ class Opts {
 	public int    maxcols  = 7;
 	public int    maxlbl   = -1; // auto
 	public bool   horiz    = false;
+	public bool   center   = false;
+	public bool   notooltip = false;
 	public bool   nosearch = false;
 	public bool   stay     = false;
 	public bool   solid    = false;
@@ -52,7 +54,9 @@ class Opts {
 		print("  -c, --maxcols INT  maximum number of columns\n");
 		print("      --maxlbl INT   maximum length of characters in item's names\n");
 		print("  -h, --horiz        layout items horizontally\n");
+		print("      --center       center text\n");
 		print("  -l, --list         -d '30%%x50%%' -n 0 -i 0 -h -c 1 --maxlbl 1000\n");
+		print("      --notooltip    no tooltip\n");
 		print("      --nosearch     no search bar\n");
 		print("      --stay         prevent quitting when out of focus\n");
 		print("      --solid        disable transparency\n");
@@ -147,6 +151,14 @@ class Opts {
 			case "--horiz":
 			case "-h":
 				this.horiz = true;
+				break;
+
+			case "--center":
+				this.center = true;
+				break;
+
+			case "--notooltip":
+				this.notooltip = true;
 				break;
 
 			case "--nosearch":

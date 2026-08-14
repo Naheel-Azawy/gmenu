@@ -35,6 +35,10 @@ bool parse_push_cmd_line(GMenuWin win, string line) {
 		dotdesktop_push_from_dirs(win, arg);
 		break;
 
+	case "select":
+		win.opts.index = int.parse(arg);
+		break;
+
 	default:
 		return false;
 	}
