@@ -43,7 +43,7 @@ class Opts {
 		print("Options:\n");
 		print("      --title  STR   title of the menu\n");
 		print("  -p, --prompt STR   prompt of the menu\n");
-		print("  -d, --dims STR     dimensions of the window (pixels by default, %: window percent, i: icon percent)\n");
+		print("  -d, --dims DIM     dimensions of the window\n");
 		print("  -s, --css STR      CSS file or string\n");
 		print("  -nb STR            normal item background color\n");
 		print("  -nf STR            normal item foreground color\n");
@@ -70,6 +70,14 @@ class Opts {
 		print("  >>jfile, >>json-file STR  insert json file\n");
 		print("  >>power                   insert power options\n");
 		print("  >>desktops <STR>          insert desktop files at optional directory\n");
+		print("\n");
+		print("Dims:\n");
+		print("              pixels by default\n");
+		print("  `%':        percent of the current screen geometry\n");
+		print("  `i':        percent of the icon size\n");
+		print("  `min(...)': minimum of two values\n");
+		print("  `max(...)': maximum of two values\n");
+		print("  Example:    `-d 'min(800, 90%)*max(80%, 600)'`\n");
 	}
 
 	public string? args_parse(string[] args) {

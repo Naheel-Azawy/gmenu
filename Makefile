@@ -26,7 +26,7 @@ all: ./build/gmenu
 C: $(SRC)
 	valac $(FLAGS) $(SRC) -C
 
-install:
+install: ./build/gmenu
 	mkdir -p $(BINPREFIX) $(ICONSDIR)
 	cp -f ./build/gmenu $(BINPREFIX)/
 	cp -f ./icons/*.svg $(ICONSDIR)/

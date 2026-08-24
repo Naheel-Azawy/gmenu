@@ -20,7 +20,9 @@ void run_mode(GMenuWin win) {
 int main(string[] args) {
 	Gtk.init(ref args);
 	var win = new GMenuWin();
-	win.opts.args_parse(args);
+	if (win.opts.args_parse(args) == null) {
+		return -1;
+	}
 
 	if (win.opts.sync) {
 		run_mode(win);

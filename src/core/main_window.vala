@@ -129,21 +129,42 @@ class GMenuWin : Gtk.Window {
 				this.opts.dims = "55%x50%";
 			}
 		}
-		string[] d = this.opts.dims.split("x");
-		int[] geo_arr = {geo.width, geo.height};
-		int[] res_dim = {0, 0};
-		for (int i = 0; i < 2; ++i) {
-			if (d[i].has_suffix("%")) {
-				res_dim[i] = (int) (float.parse(d[i][:-1]) * geo_arr[i] / 100);
-			} else if (d[i].has_suffix("i")) {
-				res_dim[i] = (int) (float.parse(d[i][:-1]) * this.opts.isize);
-			} else {
-				res_dim[i] = int.parse(d[i]);
-			}
-		}
+		int[] res_dim = this.parse_dims(this.opts.dims, geo.width, geo.height);
 		this.set_default_size(res_dim[0], res_dim[1]);
 
 		this.show_win();
+	}
+
+	private int parse_dim_value(string s, int geo_dim) {
+		if (s.has_suffix("%")) {
+			return (int) (float.parse(s[:-1]) * geo_dim / 100);
+		} else if (s.has_suffix("i")) {
+			return (int) (float.parse(s[:-1]) * this.opts.isize);
+		} else {
+			return int.parse(s);
+		}
+	}
+
+	private int parse_dim_token(string token, int geo_dim) {
+		if (token.has_prefix("min(") || token.has_prefix("max(")) {
+			bool is_min = token.has_prefix("min(");
+			string[] parts = token[4:-1].split(",");
+			int a = parse_dim_value(parts[0].strip(), geo_dim);
+			int b = parse_dim_value(parts[1].strip(), geo_dim);
+			return is_min ? int.min(a, b) : int.max(a, b);
+		} else {
+			return parse_dim_value(token, geo_dim);
+		}
+	}
+
+	private int[] parse_dims(string dims, int geo_w, int geo_h) {
+		int[] geo_arr = {geo_w, geo_h};
+		int[] res_dim = {0, 0};
+		string[] d = dims.contains("*") ? dims.split("*") : dims.split("x");
+		for (int i = 0; i < 2; ++i) {
+			res_dim[i] = parse_dim_token(d[i].strip(), geo_arr[i]);
+		}
+		return res_dim;
 	}
 
 	public void cursor_pos(out int x, out int y) {
