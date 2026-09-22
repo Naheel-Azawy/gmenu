@@ -65,6 +65,7 @@ class Opts {
 	public bool   solid    = false;
 	public bool   full     = false;
 	public bool   sync     = false;
+	public bool   floating = true; // --nofloating disables the resizable-toggle trick in main_window.vala's show_win()
 
 	// Populated in the constructor below from ENV_VARS (defined above
 	// class Opts) -- see there for names, descriptions and defaults.
@@ -129,10 +130,12 @@ class Opts {
 	public string? args_parse(string[] args) {
 		this.mode = "dmenu";
 
-		// --list/-l is a shorthand that presets several fields below; it
-		// must be detected and applied *before* the real parse so that an
-		// explicit flag (e.g. -d) always overrides it, in either order on
-		// the command line -- matching what a preset is supposed to mean
+		// --list/-l and --nofloating are shorthands that preset other
+		// fields below; they must be detected and applied *before* the
+		// real parse so that an explicit flag (e.g. -d, or --no-stay)
+		// always overrides the preset, in either order on the command
+		// line -- matching what a preset is supposed to mean. Checked
+		// independently (not else-if), since both could be present at once.
 		foreach (unowned string tok in args) {
 			if (tok == "-l" || tok == "--list") {
 				this.dims    = "30%x50%";
@@ -141,7 +144,11 @@ class Opts {
 				this.horiz   = true;
 				this.maxcols = 1;
 				this.maxlbl  = 1000;
-				break;
+			}
+			if (tok == "--nofloating") {
+				// a floating-less window is easy to lose focus to in a
+				// tiling WM; default to not quitting when that happens
+				this.stay = true;
 			}
 		}
 
@@ -201,6 +208,8 @@ class Opts {
 			{ "no-solid",  0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.solid,     "enable transparency (undoes --solid)", null },
 			{ "full",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.full,      "fullscreen window", null },
 			{ "no-full",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.full,      "windowed, not fullscreen (undoes --full)", null },
+			{ "floating",   0,  OptionFlags.NONE,    OptionArg.NONE,     ref this.floating,  "float the window in tiling window managers (default)", null },
+			{ "nofloating", 0,  OptionFlags.REVERSE, OptionArg.NONE,     ref this.floating,  "tile normally in tiling window managers (undoes --floating; implies --stay)", null },
 			{ "sync",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.sync,      "wait for all input before showing", null },
 			{ "no-sync",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.sync,      "don't wait for all input (undoes --sync)", null },
 			// collects the bare command (apps/power/yesno) plus, for

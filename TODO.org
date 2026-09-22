@@ -2,10 +2,10 @@
 2. [X] better args
    + [X] better parse, I think gtk has something good already?
    + [X] each option should have an on/off method, not only flag to enable
-3. [ ] normal window mode
+3. [X] normal window mode
    + unlike the default floating
    + this also auto enables --stay
-4. [ ] env vars customize distro specific actions
+4. [X] env vars customize distro specific actions
    + uninstall package manager
    + text editor
    + power menu

@@ -426,9 +426,20 @@ class GMenuWin : Gtk.Window {
 	}
 
 	private void show_win() {
-		this.resizable = false;
-		this.show_all();
-		this.resizable = true; // to stay floating in a tiling wm
+		if (this.opts.floating) {
+			// Trick to hint tiling window managers (i3, sway, etc.) to
+			// float this window rather than tile it: many of them decide
+			// floating vs. tiled at map time based on whether the window
+			// is resizable, so toggling it false -> true around show_all()
+			// gets it treated as floating.
+			this.resizable = false;
+			this.show_all();
+			this.resizable = true;
+		} else {
+			// --nofloating: skip the trick above, so the window maps as an
+			// ordinary resizable window and tiling WMs tile it normally.
+			this.show_all();
+		}
 		if (this.opts.full) {
 			this.fullscreen();
 		}
