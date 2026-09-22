@@ -1,7 +1,7 @@
 1. [X] fix navigation when filtered
-2. [ ] better args
-   + [ ] better parse, I think gtk has something good already?
-   + [ ] each option should have an on/off method, not only flag to enable
+2. [X] better args
+   + [X] better parse, I think gtk has something good already?
+   + [X] each option should have an on/off method, not only flag to enable
 3. [ ] normal window mode
    + unlike the default floating
    + this also auto enables --stay
