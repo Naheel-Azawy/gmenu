@@ -1,22 +1,26 @@
+// True if `item' should be offered: either its command was overridden via
+// `env_name' (in which case it's trusted as-is, whatever it needs), or it
+// still runs the built-in default, which needs `binary' to be present.
+private bool power_avail(string env_name, string binary) {
+	return Environment.get_variable(env_name) != null || exists(binary);
+}
+
 int load_power(GMenuWin win) {
-	// TODO: make the below customizable
+	var o = win.opts;
 
-	if (!exists("systemctl")) {
-		stderr.printf("Error: systemctl does not exist\n");
-		return 1;
-	}
+	if (power_avail("GMENU_POWER_SLEEP_CMD", "systemctl"))
+		win.push(new Item("Sleep",     o.power_sleep_cmd,     "power-sleep",     "", "", false, false));
+	if (power_avail("GMENU_POWER_SHUTDOWN_CMD", "systemctl"))
+		win.push(new Item("Shutdown",  o.power_shutdown_cmd,  "power-shutdown",  "", "", false, true));
+	if (power_avail("GMENU_POWER_RESTART_CMD", "systemctl"))
+		win.push(new Item("Restart",   o.power_restart_cmd,   "power-restart",   "", "", false, true));
+	if (power_avail("GMENU_POWER_HIBERNATE_CMD", "systemctl"))
+		win.push(new Item("Hibernate", o.power_hibernate_cmd, "power-hibernate", "", "", false, true));
 
-	win.push(new Item("Sleep",     "systemctl suspend",   "power-sleep",     "", "", false, false));
-	win.push(new Item("Shutdown",  "systemctl poweroff",  "power-shutdown",  "", "", false, true));
-	win.push(new Item("Restart",   "systemctl reboot",    "power-restart",   "", "", false, true));
-	win.push(new Item("Hibernate", "systemctl hibernate", "power-hibernate", "", "", false, true));
-
-	if (!exists("ndg")) {
-		return 0;
-	}
-
-	win.push(new Item("Logout", "ndg wm end",     "power-logout", "", "", false, true));
-	win.push(new Item("Lock",   "ndg lockscreen", "power-lock",   "", "", false, false));
+	if (power_avail("GMENU_POWER_LOGOUT_CMD", "ndg"))
+		win.push(new Item("Logout", o.power_logout_cmd, "power-logout", "", "", false, true));
+	if (power_avail("GMENU_POWER_LOCK_CMD", "ndg"))
+		win.push(new Item("Lock",   o.power_lock_cmd,   "power-lock",   "", "", false, false));
 
 	return 0;
 }

@@ -61,6 +61,15 @@ string clean_path(string path) {
 	return path;
 }
 
+// Single-quotes `s' for safe embedding in a shell command line: wraps it in
+// '...' and escapes any single quotes it contains as '\'' (close the
+// quote, an escaped literal quote, reopen the quote), so content coming
+// from a file path, a package name, or the like can't break out of the
+// quoting it's embedded in.
+string shell_quote(string s) {
+	return "'" + s.replace("'", "'\\''") + "'";
+}
+
 int system(string cmd) {
     try {
 		Process.spawn_command_line_async(cmd);
@@ -70,15 +79,19 @@ int system(string cmd) {
     }
 }
 
-string? uninstall_cmd_of(string file) {
-	// TODO: consider apt, dnf, etc...
-	if (!exists("pacman")) return null;
+string? uninstall_cmd_of(string file, string query_cmd, string uninstall_cmd) {
+	// query_cmd/uninstall_cmd come from Opts (GMENU_PKG_QUERY_CMD /
+	// GMENU_PKG_UNINSTALL_CMD, defaulting to pacman); the output parsing
+	// below still assumes pacman's own "is owned by" wording -- see the
+	// comment on those fields in opts.vala
+	string[] query_argv = query_cmd.split(" ");
+	if (query_argv.length == 0 || !exists(query_argv[0])) return null;
 
 	string o;
 	string e;
 	int status;
 	try {
-		Process.spawn_command_line_sync("pacman -Qo " + Posix.realpath(file),
+		Process.spawn_command_line_sync(query_cmd + " " + shell_quote(Posix.realpath(file)),
 										out o,
 										out e,
 										out status);
@@ -94,7 +107,7 @@ string? uninstall_cmd_of(string file) {
 	if (s.length != 2) return null;
 	string owner = s[0];
 
-	return "sudo pacman -R " + owner;
+	return uninstall_cmd + " " + owner;
 }
 
 string? get_terminal() {
@@ -121,7 +134,12 @@ int run_on_terminal(string cmd) {
 	return system(trm + " -e " + cmd);
 }
 
-string? get_editor() {
+string? get_editor(string? preferred = null) {
+	// `preferred' is Opts.editor (GMENU_EDITOR); it outranks $EDITOR and
+	// autodetection, same relative priority $EDITOR already had over the
+	// autodetected `editors' list
+	if (preferred != null) return preferred;
+
 	string editor = Environment.get_variable("EDITOR");
 	if (editor != null) return editor;
 
@@ -137,17 +155,16 @@ string? get_editor() {
 	return null;
 }
 
-int edit(string f) {
-	var editor = get_editor();
+int edit(string f, string? preferred_editor = null) {
+	var editor = get_editor(preferred_editor);
 	if (editor == null) {
 		return -1;
 	}
-	// TODO: consider gui editors, escape '
-	return run_on_terminal(editor + " '" + f + "'");
+	return run_on_terminal(editor + " " + shell_quote(f));
 }
 
 int locate_file(string f) {
 	if (!exists("xdg-open")) return -1;
 	string dir = GLib.Path.get_dirname(f);
-	return system("xdg-open '" + dir + "'");
+	return system("xdg-open " + shell_quote(dir));
 }

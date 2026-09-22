@@ -1,3 +1,52 @@
+// Settings sourced from the environment (GMENU_-prefixed), not the
+// command line. Each var, its one-line description, and its default are
+// defined exactly once, here; Opts's constructor and args_parse()'s
+// --help text (see env_vars_help() below) both read from this table
+// instead of repeating the name/description/default themselves.
+// GMENU_EDITOR's default is "": it has no real fallback string, since
+// unset means "defer to $EDITOR, then autodetection" (see utils.vala's
+// get_editor()) rather than a fixed command.
+struct EnvVar {
+	public string name;
+	public string def;
+	public string desc;
+}
+
+const EnvVar[] ENV_VARS = {
+	{ "GMENU_PKG_QUERY_CMD",       "pacman -Qo",          "command to find which package owns a file" },
+	{ "GMENU_PKG_UNINSTALL_CMD",   "sudo pacman -R",      "command to remove a package (its name is appended)" },
+	{ "GMENU_EDITOR",              "",                    "preferred editor, overriding $EDITOR and autodetection" },
+	{ "GMENU_POWER_SLEEP_CMD",     "systemctl suspend",   "command the power menu's Sleep action runs" },
+	{ "GMENU_POWER_SHUTDOWN_CMD",  "systemctl poweroff",  "command the power menu's Shutdown action runs" },
+	{ "GMENU_POWER_RESTART_CMD",   "systemctl reboot",    "command the power menu's Restart action runs" },
+	{ "GMENU_POWER_HIBERNATE_CMD", "systemctl hibernate", "command the power menu's Hibernate action runs" },
+	{ "GMENU_POWER_LOGOUT_CMD",    "ndg wm end",          "command the power menu's Logout action runs" },
+	{ "GMENU_POWER_LOCK_CMD",      "ndg lockscreen",      "command the power menu's Lock action runs" },
+};
+
+// The value of `name', from the environment if set, else ENV_VARS' own
+// default for it.
+private string env_or_default(string name) {
+	foreach (var v in ENV_VARS) {
+		if (v.name == name) return Environment.get_variable(name) ?? v.def;
+	}
+	assert_not_reached();
+}
+
+// Renders ENV_VARS as an "Environment:" --help section.
+private string env_vars_help() {
+	int width = 0;
+	foreach (var v in ENV_VARS) {
+		if (v.name.length > width) width = v.name.length;
+	}
+	var sb = new StringBuilder("Environment:\n");
+	foreach (var v in ENV_VARS) {
+		sb.append("  %-*s  %s (default: %s)\n".printf(
+			width, v.name, v.desc, v.def == "" ? "none" : v.def));
+	}
+	return sb.str[:-1];
+}
+
 class Opts {
 	public string mode     = "dmenu";
 	public string title    = null;
@@ -17,6 +66,21 @@ class Opts {
 	public bool   full     = false;
 	public bool   sync     = false;
 
+	// Populated in the constructor below from ENV_VARS (defined above
+	// class Opts) -- see there for names, descriptions and defaults.
+	// valac 0.56 also crashes internally on a field initializer using
+	// `??' (`vala_expression_insert_statement: assertion "block != NULL"
+	// failed'), so these are set as ordinary statements, not inline.
+	public string  pkg_query_cmd;
+	public string  pkg_uninstall_cmd;
+	public string? editor; // null: no override, see ENV_VARS' entry for it
+	public string  power_sleep_cmd;
+	public string  power_shutdown_cmd;
+	public string  power_restart_cmd;
+	public string  power_hibernate_cmd;
+	public string  power_logout_cmd;
+	public string  power_lock_cmd;
+
 	// -l/--list is detected by a pre-scan in args_parse() before real
 	// parsing starts (see there); this field only exists so GOption still
 	// recognizes and consumes the flag -- its value here is otherwise unused
@@ -35,6 +99,18 @@ class Opts {
 	// and ignore
 	[CCode (array_length = false, array_null_terminated = true)]
 	private string[]? remaining = null;
+
+	public Opts() {
+		this.pkg_query_cmd     = env_or_default("GMENU_PKG_QUERY_CMD");
+		this.pkg_uninstall_cmd = env_or_default("GMENU_PKG_UNINSTALL_CMD");
+		this.editor             = Environment.get_variable("GMENU_EDITOR");
+		this.power_sleep_cmd     = env_or_default("GMENU_POWER_SLEEP_CMD");
+		this.power_shutdown_cmd  = env_or_default("GMENU_POWER_SHUTDOWN_CMD");
+		this.power_restart_cmd   = env_or_default("GMENU_POWER_RESTART_CMD");
+		this.power_hibernate_cmd = env_or_default("GMENU_POWER_HIBERNATE_CMD");
+		this.power_logout_cmd    = env_or_default("GMENU_POWER_LOGOUT_CMD");
+		this.power_lock_cmd      = env_or_default("GMENU_POWER_LOCK_CMD");
+	}
 
 	public void auto_set(int screen_width) {
 		if (screen_width >= 1920) {
@@ -93,7 +169,9 @@ class Opts {
 			"  `i':        percent of the icon size\n" +
 			"  `min(...)': minimum of two values\n" +
 			"  `max(...)': maximum of two values\n" +
-			"  Example:    `-d 'min(800, 90%)*max(80%, 600)'`");
+			"  Example:    `-d 'min(800, 90%)*max(80%, 600)'`\n" +
+			"\n" +
+			env_vars_help());
 
 		GLib.OptionEntry[] entries = {
 			{ "title",     0,   OptionFlags.NONE, OptionArg.STRING,      ref this.title,     "title of the menu", "STR" },

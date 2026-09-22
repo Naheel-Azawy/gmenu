@@ -150,7 +150,7 @@ class Item {
 		menu.add(menu_item);
 
 		menu_item = new Gtk.MenuItem.with_label("Edit desktop file");
-		menu_item.activate.connect(ev => edit(this.desktop_file));
+		menu_item.activate.connect(ev => edit(this.desktop_file, this.win.opts.editor));
 		menu.add(menu_item);
 
 		menu_item = new Gtk.MenuItem.with_label("Hide");
@@ -158,7 +158,9 @@ class Item {
 		menu.add(menu_item);
 
 		if (this.uninstall_cmd == "") {
-			this.uninstall_cmd = uninstall_cmd_of(this.desktop_file);
+			this.uninstall_cmd = uninstall_cmd_of(this.desktop_file,
+												   this.win.opts.pkg_query_cmd,
+												   this.win.opts.pkg_uninstall_cmd);
 		}
 		if (this.uninstall_cmd != null) {
 			menu_item = new Gtk.MenuItem.with_label("Uninstall");
@@ -176,10 +178,10 @@ class Item {
 		var yn_win = new GMenuWin();
 		run_yesno(yn_win, "Uninstall " + this.name, yes => {
 			if (yes) {
-				run_on_terminal("sh -c '" +
-								"echo " + this.uninstall_cmd + "; " +
-								this.uninstall_cmd + "; " +
-								"echo Press enter to close; read _'");
+				string script = "echo " + this.uninstall_cmd + "; " +
+					this.uninstall_cmd + "; " +
+					"echo Press enter to close; read _";
+				run_on_terminal("sh -c " + shell_quote(script));
 			}
 			main_end();
 		});
