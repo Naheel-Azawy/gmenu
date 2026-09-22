@@ -47,6 +47,15 @@ class ItemsContainer {
 		return this.win.items[child.get_index()];
 	}
 
+	// A flow box child is really shown only when it is both shown by the
+	// application (`visible') and not filtered out by the flow box.
+	// GtkFlowBox implements its filter with gtk_widget_set_child_visible(),
+	// which leaves the `visible' property untouched. Hence, checking
+	// `visible' alone reports true even for filtered out children.
+	public static bool child_shown(Gtk.Widget? w) {
+		return w != null && w.get_visible() && w.get_child_visible();
+	}
+
 	private bool filter_fun(Gtk.FlowBoxChild child) {
 		string p = this.phrase().down();
 		Item item;
@@ -119,7 +128,7 @@ class ItemsContainer {
 		FlowBoxChild last_child = null;
 		unowned List<weak Gtk.Widget>? node = children.last();
 		while (node != null) {
-			if (node.data.visible) {
+			if (child_shown(node.data)) {
 				last_child = node.data as FlowBoxChild;
 				break;
 			}
@@ -137,7 +146,7 @@ class ItemsContainer {
 		FlowBoxChild first_child = null;
 		unowned List<weak Gtk.Widget>? node = children.first();
 		while (node != null) {
-			if (node.data.visible) {
+			if (child_shown(node.data)) {
 				first_child = node.data as FlowBoxChild;
 				break;
 			}

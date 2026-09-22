@@ -285,8 +285,9 @@ class GMenuWin : Gtk.Window {
 
 			} else if (ev.keyval == Gdk.Key.Left ||
 					   ev.keyval == Gdk.Key.Up) {
+				// first_item() is null when the filter matches nothing
 				Item first = this.items_cont.first_item();
-				if (first.i == i.i) {
+				if (first == null || first.i == i.i) {
 					this.items_cont.select_last();
 					return true;
 				}
@@ -294,15 +295,14 @@ class GMenuWin : Gtk.Window {
 			} else if (ev.keyval == Gdk.Key.Right ||
 					   ev.keyval == Gdk.Key.Down) {
 				Item last = this.items_cont.last_item();
-				if (last.i == i.i) {
+				if (last == null || last.i == i.i) {
 					this.items_cont.select_first();
 					return true;
 				}
 			}
 
 			// go to next or prev line on right or left and the beginning or
-			// end of the line TODO: this fails when filtering, it goes over
-			// items which are not visible for some reason. Fix
+			// end of the line
 			if (ev.keyval == Gdk.Key.Right ||
 				ev.keyval == Gdk.Key.Left) {
 
@@ -311,7 +311,7 @@ class GMenuWin : Gtk.Window {
 
 				// No selection yet, or it's pointing at something the current
 				// filter has hidden: just jump to an end and consume the key.
-				if (child == null || !child.visible) {
+				if (!ItemsContainer.child_shown(child)) {
 					if (forward) {
 						this.items_cont.select_first();
 					} else {
@@ -324,8 +324,10 @@ class GMenuWin : Gtk.Window {
 				int idx = child.get_index() + delta;
 				Gtk.FlowBoxChild target = this.items_cont.get_child_at_index(idx);
 
-				while (target != null && !target.visible) {
-					// TODO: this appears to always be false; fix
+				// NOTE: `visible' is not the filter state. Filtered out
+				// children keep `visible == true' and are hidden through
+				// gtk_widget_set_child_visible() instead
+				while (target != null && !ItemsContainer.child_shown(target)) {
 					// NOTE: be careful, this can be O(n)
 					idx += delta;
 					target = this.items_cont.get_child_at_index(idx);

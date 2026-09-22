@@ -1,0 +1,36 @@
+1. [X] fix navigation when filtered
+2. [ ] better args
+   + [ ] better parse, I think gtk has something good already?
+   + [ ] each option should have an on/off method, not only flag to enable
+3. [ ] normal window mode
+   + unlike the default floating
+   + this also auto enables --stay
+4. [ ] env vars customize distro specific actions
+   + uninstall package manager
+   + text editor
+   + power menu
+5. [ ] multi-select option
+6. [ ] while running, stdin can:
+   + [ ] decide to keep json + your current parsing, or create new syntax.
+   + [ ] each item may have an ID, if a new line is fed with the same ID, replace previous one in its location.
+   + [ ] change options (args)
+7. [ ] terminal items
+   + an item may be a vte instance instead of an icon
+   + this can be a command that runs once or continuously
+   + terminal click events should be controlled from gmenu
+8. [ ] nested containers
+   + one item can be a container of more items
+9. [ ] panels options
+   + a panel is a large item that may be added on top, bottom, left, or right
+   + zero to 4 panels may be enabled
+   + good for previews, help, or double sided layouts
+10. [ ] keyboard shortcuts
+11. [ ] icon grow into and shrink from animations
+    this is for your xgds
+12. [ ] docking mode
+    + turns gmenu into a lemonbar replacement
+    + xorg first of course, if you can, also handle wayland
+
+*Notes:*
+- the intention is to make gmenu a master layout creator for ndg and all related components
+- these changes forms the base of a file manager with a preview
