@@ -21,6 +21,11 @@ class GMenuWin : Gtk.Window {
 	public int ret = 0;
 	private Mutex mx = Mutex();
 
+	// Tracks the currently-applied CSS provider so a later live update
+	// (see load_css()) can remove it before adding its replacement,
+	// instead of stacking providers indefinitely.
+	private Gtk.CssProvider? _css_provider = null;
+
 	public void build() {
 		if (this.opts.sync) {
 			this.build_real();
@@ -32,6 +37,98 @@ class GMenuWin : Gtk.Window {
 			mx.unlock();
 			return false;
 		});
+	}
+
+	// Loads CSS from opts.css (file or inline string) on top of the
+	// built-in CSS. Called at build time and, for a live change, again
+	// afterward -- removes the previous provider first so repeated calls
+	// don't stack.
+	private void load_css() {
+		string css_sum = CSS;
+		if (this.opts.css != null && this.opts.css.length > 0) {
+			var f = File.new_for_path(this.opts.css);
+			if (f.query_exists()) {
+				try {
+					string css_file_out;
+					FileUtils.get_contents(this.opts.css, out css_file_out);
+					css_sum += "\n" + css_file_out;
+				} catch (GLib.FileError ignored) {
+				}
+			} else {
+				css_sum += "\n" + this.opts.css;
+			}
+		}
+		var screen = this.get_screen();
+		if (this._css_provider != null) {
+			Gtk.StyleContext.remove_provider_for_screen(screen, this._css_provider);
+		}
+		var provider = new Gtk.CssProvider();
+		try {
+			provider.load_from_data(css_sum, css_sum.length);
+			Gtk.StyleContext.add_provider_for_screen(
+				screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
+			this._css_provider = provider;
+		} catch (Error e) {
+			stderr.printf("Failed loading CSS\n");
+		}
+	}
+
+	// Resolves opts.dims (defaulting it first, if still unset) against
+	// the current monitor geometry and applies it. Called at build time
+	// (before the window is realized, so set_default_size()) and, for a
+	// live change, again afterward (so resize() instead, which is what
+	// actually moves an already-shown window).
+	private void apply_dims() {
+		Gdk.Rectangle geo = this.geometry();
+		if (this.opts.dims == null) {
+			if (geo.width >= geo.height) {
+				this.opts.dims = "45%x80%";
+			} else {
+				this.opts.dims = "55%x50%";
+			}
+		}
+		int[] res_dim = this.parse_dims(this.opts.dims, geo.width, geo.height);
+		if (this.get_realized()) {
+			this.resize(res_dim[0], res_dim[1]);
+		} else {
+			this.set_default_size(res_dim[0], res_dim[1]);
+		}
+	}
+
+	// Applies a change already written into `opts' by Opts.set_live() to
+	// the live window, for the handful of fields where that takes an
+	// explicit GTK call -- everything else in LIVE_SETTABLE (isize,
+	// maxlbl, center, horiz, stay, notooltip) is already read fresh at
+	// the point it's next used (an item pushed after this point, or the
+	// next tooltip/focus-out), so needs nothing further here.
+	public bool set_live_opt(string key, string value) {
+		if (!this.opts.set_live(key, value)) return false;
+
+		switch (key) {
+		case "title":
+			this.title = this.opts.title;
+			break;
+		case "dims":
+			this.apply_dims();
+			break;
+		case "css":
+			this.load_css();
+			break;
+		case "maxcols":
+			this.items_cont.set_maxcols(this.opts.maxcols);
+			break;
+		case "full":
+			if (this.opts.full) {
+				this.fullscreen();
+			} else {
+				this.unfullscreen();
+			}
+			break;
+		default:
+			break;
+		}
+
+		return true;
 	}
 
 	private void build_real() {
@@ -51,30 +148,9 @@ class GMenuWin : Gtk.Window {
 		this.key_press_event.connect(this.on_key);
 		this.focus_out_event.connect(this.on_focus_out);
 
-		// load css
-		string css_sum = CSS;
-		if (this.opts.css != null && this.opts.css.length > 0) {
-			var f = File.new_for_path(this.opts.css);
-			if (f.query_exists()) {
-				try {
-					string css_file_out;
-					FileUtils.get_contents(this.opts.css, out css_file_out);
-					css_sum += "\n" + css_file_out;
-				} catch (GLib.FileError ignored) {
-				}
-			} else {
-				css_sum += "\n" + this.opts.css;
-			}
-		}
+		this.load_css();
+
 		var screen = this.get_screen();
-		var provider = new Gtk.CssProvider();
-		try {
-			provider.load_from_data(css_sum, css_sum.length);
-			Gtk.StyleContext.add_provider_for_screen(
-				screen, provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION);
-		} catch (Error e) {
-			stderr.printf("Failed loading CSS\n");
-		}
 
 		// transparent window
 		if (!this.opts.solid) {
@@ -115,22 +191,10 @@ class GMenuWin : Gtk.Window {
 		// initial cursor position
 		this.cursor_pos(out this.cursor_x, out this.cursor_y);
 
-		// dims geometry
-		Gdk.Rectangle geo = this.geometry();
-
 		// auto opts
-		this.opts.auto_set(geo.width);
+		this.opts.auto_set(this.geometry().width);
 
-		// dims
-		if (this.opts.dims == null) {
-			if (geo.width >= geo.height) {
-				this.opts.dims = "45%x80%";
-			} else {
-				this.opts.dims = "55%x50%";
-			}
-		}
-		int[] res_dim = this.parse_dims(this.opts.dims, geo.width, geo.height);
-		this.set_default_size(res_dim[0], res_dim[1]);
+		this.apply_dims();
 
 		this.show_win();
 	}

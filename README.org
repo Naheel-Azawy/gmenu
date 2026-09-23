@@ -42,6 +42,7 @@ Try ~gmenu --help~ for more.
       echo :: cmd=power
       echo bar
       echo :: cmd=desktops dirs="$HOME/.local/share/applications"
+      echo :: cmd=set maxcols=3
   } | gmenu --list -d 15%x39% -i 16 -sf black -sb white -n 2
 #+end_src
 [[./screenshots/dmenu-1.png]]
@@ -49,7 +50,8 @@ Try ~gmenu --help~ for more.
 Each line is plain text by default; ~text :: key=value key2=value2~ decorates
 it (~name~, ~exec~, ~icon~, ~icon-size~, ~comment~, ~selected~, ~terminal~,
 ~confirm~), and ~cmd~ is a directive instead of an item (~power~, ~desktops~,
-~select~, ~json-file~). Values only need quoting for whitespace; quotes here
+~json-file~, ~set~ -- the last one changes an option, e.g. ~index~, mid-
+session). Values only need quoting for whitespace; quotes here
 are just normal shell quoting, so plain ~echo~/~printf~ without an outer
 wrapping quote works fine, as above, with no spacing rules to remember: ~::~
 is never special to any POSIX shell, so unlike some other marker characters

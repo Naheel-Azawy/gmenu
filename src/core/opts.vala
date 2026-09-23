@@ -47,6 +47,25 @@ private string env_vars_help() {
 	return sb.str[:-1];
 }
 
+// Which CLI flags (by their `entries()' long_name) can also be changed
+// mid-session from stdin via `:: cmd=set key=value'; see Opts.set_live()
+// and GMenuWin.set_live_opt(). A deliberately curated subset, not "every
+// flag": e.g. solid (a window's GdkVisual can't be swapped once it's
+// realized), nosearch (would mean creating a widget that was never
+// built), sync/floating/mode/list (decided once, before or at window
+// creation, with no live equivalent) are all left out on purpose.
+// dmenu.vala's frag_key_known() also reads this, so a name only ever
+// needs to be added here once.
+const string[] LIVE_SETTABLE = {
+	"title", "dims", "css", "maxcols", "index",
+	"isize", "maxlbl", "center", "horiz",
+	"stay", "notooltip", "full",
+};
+
+private string live_settable_help() {
+	return string.joinv(", ", LIVE_SETTABLE);
+}
+
 class Opts {
 	public string mode     = "dmenu";
 	public string title    = null;
@@ -101,6 +120,15 @@ class Opts {
 	[CCode (array_length = false, array_null_terminated = true)]
 	private string[]? remaining = null;
 
+	// The single source of truth for every CLI flag: name, short letter,
+	// type, and which field it writes. Its `ref' bindings point at this
+	// Opts instance's own fields, so it's built once, here, rather than
+	// as a `const' (impossible: a `const' can't reference `this' at
+	// all) or rebuilt on every use. Reused both for real CLI parsing in
+	// args_parse() and for live, stdin-driven changes in set_live()
+	// below -- one definition instead of two.
+	private GLib.OptionEntry[] _entries;
+
 	public Opts() {
 		this.pkg_query_cmd     = env_or_default("GMENU_PKG_QUERY_CMD");
 		this.pkg_uninstall_cmd = env_or_default("GMENU_PKG_UNINSTALL_CMD");
@@ -111,6 +139,44 @@ class Opts {
 		this.power_hibernate_cmd = env_or_default("GMENU_POWER_HIBERNATE_CMD");
 		this.power_logout_cmd    = env_or_default("GMENU_POWER_LOGOUT_CMD");
 		this.power_lock_cmd      = env_or_default("GMENU_POWER_LOCK_CMD");
+
+		this._entries = {
+			{ "title",     0,   OptionFlags.NONE, OptionArg.STRING,      ref this.title,     "title of the menu", "STR" },
+			{ "prompt",    'p', OptionFlags.NONE, OptionArg.STRING,      ref this.prompt,    "prompt of the menu", "STR" },
+			{ "dims",      'd', OptionFlags.NONE, OptionArg.STRING,      ref this.dims,      "dimensions of the window", "DIM" },
+			{ "css",       's', OptionFlags.NONE, OptionArg.STRING,      ref this.css,       "CSS file or string", "STR" },
+			{ "nb",        0,   OptionFlags.NONE, OptionArg.STRING,      ref this.nb_color,  "normal item background color", "STR" },
+			{ "nf",        0,   OptionFlags.NONE, OptionArg.STRING,      ref this.nf_color,  "normal item foreground color", "STR" },
+			{ "sb",        0,   OptionFlags.NONE, OptionArg.STRING,      ref this.sb_color,  "selected item background color", "STR" },
+			{ "sf",        0,   OptionFlags.NONE, OptionArg.STRING,      ref this.sf_color,  "selected item foreground color", "STR" },
+			{ "index",     'n', OptionFlags.NONE, OptionArg.INT,         ref this.index,     "index of initially selected item", "INT" },
+			{ "isize",     'i', OptionFlags.NONE, OptionArg.INT,         ref this.isize,     "icon size (0 to disable icons)", "INT" },
+			{ "maxcols",   'c', OptionFlags.NONE, OptionArg.INT,         ref this.maxcols,   "maximum number of columns", "INT" },
+			{ "maxlbl",    0,   OptionFlags.NONE, OptionArg.INT,         ref this.maxlbl,    "maximum length of characters in item's names", "INT" },
+			{ "horiz",     'h', OptionFlags.NONE,    OptionArg.NONE,     ref this.horiz,     "layout items horizontally", null },
+			{ "nohoriz",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.horiz,     "layout items vertically (undoes --horiz)", null },
+			{ "center",    0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.center,    "center text", null },
+			{ "nocenter",  0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.center,    "don't center text (undoes --center)", null },
+			{ "list",      'l', OptionFlags.NONE,    OptionArg.NONE,     ref this.list,      "-d '30%x50%' -n 0 -i 0 -h -c 1 --maxlbl 1000", null },
+			{ "notooltip", 0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.notooltip, "no tooltip", null },
+			{ "tooltip",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.notooltip, "show tooltip (undoes --notooltip)", null },
+			{ "nosearch",  0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.nosearch,  "no search bar", null },
+			{ "search",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.nosearch,  "show search bar (undoes --nosearch)", null },
+			{ "stay",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.stay,      "prevent quitting when out of focus", null },
+			{ "nostay",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.stay,      "quit when out of focus (undoes --stay)", null },
+			{ "solid",     0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.solid,     "disable transparency", null },
+			{ "nosolid",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.solid,     "enable transparency (undoes --solid)", null },
+			{ "full",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.full,      "fullscreen window", null },
+			{ "nofull",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.full,      "windowed, not fullscreen (undoes --full)", null },
+			{ "floating",   0,  OptionFlags.NONE,    OptionArg.NONE,     ref this.floating,  "float the window in tiling window managers (default)", null },
+			{ "nofloating", 0,  OptionFlags.REVERSE, OptionArg.NONE,     ref this.floating,  "tile normally in tiling window managers (undoes --floating; implies --stay)", null },
+			{ "sync",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.sync,      "wait for all input before showing", null },
+			{ "nosync",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.sync,      "don't wait for all input (undoes --sync)", null },
+			// collects the bare command (apps/power/yesno) plus, for
+			// dmenu's `-l N' compatibility, any trailing number
+			{ GLib.OPTION_REMAINING, 0, OptionFlags.NONE, OptionArg.STRING_ARRAY, ref this.remaining, null, null },
+			{ null }
+		};
 	}
 
 	public void auto_set(int screen_width) {
@@ -127,12 +193,75 @@ class Opts {
 		}
 	}
 
+	// The "false"-setting flag name for each of LIVE_SETTABLE's boolean
+	// (OptionArg.NONE) entries; the "true"-setting name is always the
+	// key itself, since that is how every REVERSE pair in entries() was
+	// built. Null for a key that isn't one of these five, or isn't
+	// boolean at all.
+	private static string? neg_flag_name(string key) {
+		switch (key) {
+		case "stay":      return "nostay";
+		case "notooltip": return "tooltip";
+		case "full":      return "nofull";
+		case "center":    return "nocenter";
+		case "horiz":     return "nohoriz";
+		default:          return null;
+		}
+	}
+
+	// Changes one field, by its entries() long_name, the same way a CLI
+	// flag would -- reusing entries() itself for the actual parsing and
+	// type coercion, rather than a second hand-written setter per field.
+	// False if `key' isn't in LIVE_SETTABLE, or `value' doesn't parse.
+	public bool set_live(string key, string value) {
+		bool known = false;
+		foreach (var k in LIVE_SETTABLE) if (k == key) known = true;
+		if (!known) return false;
+
+		OptionArg? kind = null;
+		foreach (var e in this._entries) {
+			if (e.long_name == key) { kind = e.arg; break; }
+		}
+		if (kind == null) return false;
+
+		string[] argv_owned;
+		if (kind == OptionArg.NONE) {
+			// booleans take no "=value" in GOption's own grammar; drive
+			// the existing flag/reverse-flag pair instead
+			string flag;
+			if (value == "true") {
+				flag = key;
+			} else if (value == "false") {
+				var neg = neg_flag_name(key);
+				if (neg == null) return false;
+				flag = neg;
+			} else {
+				return false;
+			}
+			argv_owned = { "", "--" + flag };
+		} else {
+			argv_owned = { "", "--" + key + "=" + value };
+		}
+
+		var ctx = new GLib.OptionContext();
+		ctx.set_help_enabled(false); // a stdin-driven "--help"/"-?" must never fire
+		ctx.add_main_entries(this._entries, null);
+
+		unowned string[] argv = argv_owned;
+		try {
+			ctx.parse(ref argv);
+		} catch (GLib.OptionError e) {
+			return false;
+		}
+		return true;
+	}
+
 	public string? args_parse(string[] args) {
 		this.mode = "dmenu";
 
 		// --list/-l and --nofloating are shorthands that preset other
 		// fields below; they must be detected and applied *before* the
-		// real parse so that an explicit flag (e.g. -d, or --no-stay)
+		// real parse so that an explicit flag (e.g. -d, or --nostay)
 		// always overrides the preset, in either order on the command
 		// line -- matching what a preset is supposed to mean. Checked
 		// independently (not else-if), since both could be present at once.
@@ -177,11 +306,15 @@ class Opts {
 			"    is a directive instead of an item:\n" +
 			"      :: cmd=power                    insert power options\n" +
 			"      :: cmd=desktops dirs=<STR>      insert desktop files at optional directory\n" +
-			"      :: cmd=select index=<INT>       set initially selected item\n" +
 			"      :: cmd=json-file path=<STR>     insert items from a JSON file\n" +
+			"      :: cmd=set key=value ...        change an option, mid-session\n" +
 			"    Examples:\n" +
 			"      Reboot :: exec=reboot confirm=true\n" +
 			"      Firefox :: icon=firefox comment=\"Web browser\"\n" +
+			"      :: cmd=set title=\"New Title\" maxcols=3\n" +
+			"      :: cmd=set index=2\n" +
+			"    cmd=set's keys are option names, not item fields:\n" +
+			"    " + live_settable_help() + ".\n" +
 			"\n" +
 			"  Deprecated, still recognized: >>j, >>json STR (insert json\n" +
 			"  string); >>jfile, >>json-file STR; >>power; >>desktops <STR>;\n" +
@@ -197,44 +330,7 @@ class Opts {
 			"\n" +
 			env_vars_help());
 
-		GLib.OptionEntry[] entries = {
-			{ "title",     0,   OptionFlags.NONE, OptionArg.STRING,      ref this.title,     "title of the menu", "STR" },
-			{ "prompt",    'p', OptionFlags.NONE, OptionArg.STRING,      ref this.prompt,    "prompt of the menu", "STR" },
-			{ "dims",      'd', OptionFlags.NONE, OptionArg.STRING,      ref this.dims,      "dimensions of the window", "DIM" },
-			{ "css",       's', OptionFlags.NONE, OptionArg.STRING,      ref this.css,       "CSS file or string", "STR" },
-			{ "nb",        0,   OptionFlags.NONE, OptionArg.STRING,      ref this.nb_color,  "normal item background color", "STR" },
-			{ "nf",        0,   OptionFlags.NONE, OptionArg.STRING,      ref this.nf_color,  "normal item foreground color", "STR" },
-			{ "sb",        0,   OptionFlags.NONE, OptionArg.STRING,      ref this.sb_color,  "selected item background color", "STR" },
-			{ "sf",        0,   OptionFlags.NONE, OptionArg.STRING,      ref this.sf_color,  "selected item foreground color", "STR" },
-			{ "index",     'n', OptionFlags.NONE, OptionArg.INT,         ref this.index,     "index of initially selected item", "INT" },
-			{ "isize",     'i', OptionFlags.NONE, OptionArg.INT,         ref this.isize,     "icon size (0 to disable icons)", "INT" },
-			{ "maxcols",   'c', OptionFlags.NONE, OptionArg.INT,         ref this.maxcols,   "maximum number of columns", "INT" },
-			{ "maxlbl",    0,   OptionFlags.NONE, OptionArg.INT,         ref this.maxlbl,    "maximum length of characters in item's names", "INT" },
-			{ "horiz",     'h', OptionFlags.NONE,    OptionArg.NONE,     ref this.horiz,     "layout items horizontally", null },
-			{ "no-horiz",  0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.horiz,     "layout items vertically (undoes --horiz)", null },
-			{ "center",    0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.center,    "center text", null },
-			{ "no-center", 0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.center,    "don't center text (undoes --center)", null },
-			{ "list",      'l', OptionFlags.NONE,    OptionArg.NONE,     ref this.list,      "-d '30%x50%' -n 0 -i 0 -h -c 1 --maxlbl 1000", null },
-			{ "notooltip", 0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.notooltip, "no tooltip", null },
-			{ "tooltip",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.notooltip, "show tooltip (undoes --notooltip)", null },
-			{ "nosearch",  0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.nosearch,  "no search bar", null },
-			{ "search",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.nosearch,  "show search bar (undoes --nosearch)", null },
-			{ "stay",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.stay,      "prevent quitting when out of focus", null },
-			{ "no-stay",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.stay,      "quit when out of focus (undoes --stay)", null },
-			{ "solid",     0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.solid,     "disable transparency", null },
-			{ "no-solid",  0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.solid,     "enable transparency (undoes --solid)", null },
-			{ "full",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.full,      "fullscreen window", null },
-			{ "no-full",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.full,      "windowed, not fullscreen (undoes --full)", null },
-			{ "floating",   0,  OptionFlags.NONE,    OptionArg.NONE,     ref this.floating,  "float the window in tiling window managers (default)", null },
-			{ "nofloating", 0,  OptionFlags.REVERSE, OptionArg.NONE,     ref this.floating,  "tile normally in tiling window managers (undoes --floating; implies --stay)", null },
-			{ "sync",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.sync,      "wait for all input before showing", null },
-			{ "no-sync",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.sync,      "don't wait for all input (undoes --sync)", null },
-			// collects the bare command (apps/power/yesno) plus, for
-			// dmenu's `-l N' compatibility, any trailing number
-			{ GLib.OPTION_REMAINING, 0, OptionFlags.NONE, OptionArg.STRING_ARRAY, ref this.remaining, null, null },
-			{ null }
-		};
-		ctx.add_main_entries(entries, null);
+		ctx.add_main_entries(this._entries, null);
 
 		// Legacy single-dash spellings of these four flags predate GOption
 		// (which only allows a single character after one dash); rewritten

@@ -77,11 +77,14 @@ const string[] FRAG_ITEM_KEYS = {
 	"name", "exec", "icon", "icon-size", "comment", "selected",
 	"terminal", "confirm"
 };
-const string[] FRAG_CMD_KEYS = { "cmd", "dirs", "index", "path" };
+const string[] FRAG_CMD_KEYS = { "cmd", "dirs", "path" };
 
 bool frag_key_known(string key) {
 	foreach (var k in FRAG_ITEM_KEYS) if (k == key) return true;
 	foreach (var k in FRAG_CMD_KEYS)  if (k == key) return true;
+	// cmd=set's own keys, e.g. "title" in `:: cmd=set title="New Title"';
+	// LIVE_SETTABLE (opts.vala) is the one place that list is defined
+	foreach (var k in LIVE_SETTABLE)  if (k == key) return true;
 	return false;
 }
 
@@ -194,7 +197,8 @@ void frag_apply_item(Item item, Gee.HashMap<string, string> f) {
 
 // `cmd' takes the place of >>power, >>desktops, >>select, >>json-file.
 // (Old >>json/>>j has no equivalent here because it's no longer needed:
-// a plain fragment already sets arbitrary item fields directly.)
+// a plain fragment already sets arbitrary item fields directly. Old
+// >>select is now cmd=set index=N, alongside every other option.)
 bool frag_dispatch_cmd(GMenuWin win, Gee.HashMap<string, string> f) {
 	switch (f["cmd"]) {
 	case "power":
@@ -205,15 +209,22 @@ bool frag_dispatch_cmd(GMenuWin win, Gee.HashMap<string, string> f) {
 		dotdesktop_push_from_dirs(win, f.has_key("dirs") ? f["dirs"] : null);
 		return true;
 
-	case "select":
-		if (!f.has_key("index")) return false;
-		win.opts.index = int.parse(f["index"]);
-		return true;
-
 	case "json-file":
 		if (!f.has_key("path")) return false;
 		load_json_file(win, f["path"]);
 		return true;
+
+	case "set":
+		// every other key on this line is an option to change, e.g.
+		// `:: cmd=set title="New Title" maxcols=3'; frag_key_known()
+		// has already checked each one is in LIVE_SETTABLE
+		bool any = false;
+		foreach (var key in f.keys) {
+			if (key == "cmd") continue;
+			any = true;
+			if (!win.set_live_opt(key, f[key])) return false;
+		}
+		return any;
 
 	default:
 		return false;

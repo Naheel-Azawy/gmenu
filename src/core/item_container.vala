@@ -8,6 +8,12 @@ class ItemsContainer {
 	private Item first   = null;
 	private int  margins = 10;
 
+	// GTK relayouts the whole flowbox -- every item already shown, not
+	// just future ones -- the moment this is called; no rebuilding needed.
+	public void set_maxcols(int n) {
+		this.flow.set_max_children_per_line(n);
+	}
+
 	public ItemsContainer(GMenuWin win) {
 		this.win = win;
 		this.flow = new Gtk.FlowBox();
