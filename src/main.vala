@@ -54,9 +54,26 @@ int main(string[] args) {
 		run_mode(win);
 		Gtk.main();
 	} else {
-		var thr = new Thread<void>("modes", () => run_mode(win));
+		new Thread<void>("modes", () => run_mode(win));
 		Gtk.main();
-		thr.join();
 	}
-	return win.ret;
+
+	// Not `return win.ret': if stdin is an endless producer (e.g. a
+	// shell loop piping live updates forever via the id-based replace
+	// feature -- see the README's counter example), the background
+	// thread above can be permanently blocked in stdin.read_line() with
+	// no further input coming once the window is closed. Confirmed by
+	// direct measurement, isolated from GTK and from this thread's own
+	// code entirely: a normal return (glibc's exit()) took over 3
+	// seconds to actually tear the process down with such a thread still
+	// blocked in a slow syscall, while Posix._exit() (straight to the
+	// exit_group() syscall, no waiting on other threads) took under
+	// 20ms. stdout is flushed first purely as a safety net -- _exit()
+	// skips libc's normal stdio flush, and while GLib's print(), which
+	// is what actually emits the selected item on stdout, was confirmed
+	// safe across _exit() in isolated testing (unlike raw C printf(),
+	// which was not), there's no reason to leave that to chance.
+	stdout.flush();
+	Posix._exit(win.ret);
+	return win.ret; // unreachable; satisfies the compiler
 }
