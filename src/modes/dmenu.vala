@@ -62,12 +62,15 @@ bool parse_push_cmd_line(GMenuWin win, string line) {
 // a value only when it needs to contain whitespace or start with a
 // quote character itself; single or double quotes both work. A literal
 // `::' inside `text' is written `\::'. Keys matching an Item field
-// (name, exec, icon, icon-size, comment, selected, terminal, confirm)
-// set that field, overriding `text' if `name' is also given. A `cmd'
-// key is a directive instead of an item; see frag_dispatch_cmd() for
-// the recognized values. Any other key, or any parse error after `::',
-// is treated as "this wasn't this syntax after all" and falls back to a
-// plain-text item, the same as an unmatched line always has.
+// (name, exec, icon, icon-size, comment, selected, terminal, confirm,
+// id) set that field, overriding `text' if `name' is also given. A
+// non-empty `id' replaces the item previously pushed with that same id,
+// in its same position, rather than adding a new one; see
+// GMenuWin.push_real(). A `cmd' key is a directive instead of an item;
+// see frag_dispatch_cmd() for the recognized values. Any other key, or
+// any parse error after `::', is treated as "this wasn't this syntax
+// after all" and falls back to a plain-text item, the same as an
+// unmatched line always has.
 //
 // Unlike a >>-style or bracket-style marker, "::" is never special to
 // any POSIX shell (dash or bash) in any position, quoted or not, so
@@ -75,7 +78,7 @@ bool parse_push_cmd_line(GMenuWin win, string line) {
 
 const string[] FRAG_ITEM_KEYS = {
 	"name", "exec", "icon", "icon-size", "comment", "selected",
-	"terminal", "confirm"
+	"terminal", "confirm", "id"
 };
 const string[] FRAG_CMD_KEYS = { "cmd", "dirs", "path" };
 
@@ -193,6 +196,7 @@ void frag_apply_item(Item item, Gee.HashMap<string, string> f) {
 	if (f.has_key("selected"))  item.selected = f["selected"];
 	if (f.has_key("terminal"))  item.terminal = (f["terminal"] == "true");
 	if (f.has_key("confirm"))   item.confirm  = (f["confirm"] == "true");
+	if (f.has_key("id"))        item.id       = f["id"];
 }
 
 // `cmd' takes the place of >>power, >>desktops, >>select, >>json-file.

@@ -302,8 +302,8 @@ class Opts {
 			"    bare or \"quoted\" value, no nesting; quote a value to allow\n" +
 			"    whitespace in it). A literal `::' in `text' is written `\\::'.\n" +
 			"    Keys matching an item field (name, exec, icon, icon-size,\n" +
-			"    comment, selected, terminal, confirm) set that field; `cmd'\n" +
-			"    is a directive instead of an item:\n" +
+			"    comment, selected, terminal, confirm, id) set that field;\n" +
+			"    `cmd' is a directive instead of an item:\n" +
 			"      :: cmd=power                    insert power options\n" +
 			"      :: cmd=desktops dirs=<STR>      insert desktop files at optional directory\n" +
 			"      :: cmd=json-file path=<STR>     insert items from a JSON file\n" +
@@ -313,6 +313,10 @@ class Opts {
 			"      Firefox :: icon=firefox comment=\"Web browser\"\n" +
 			"      :: cmd=set title=\"New Title\" maxcols=3\n" +
 			"      :: cmd=set index=2\n" +
+			"    A non-empty `id' replaces the item previously pushed with\n" +
+			"    that same id, in its same position, instead of adding a\n" +
+			"    new one -- e.g. re-sending `Battery: 80% :: id=battery'\n" +
+			"    with an updated percentage updates that one item in place.\n" +
 			"    cmd=set's keys are option names, not item fields:\n" +
 			"    " + live_settable_help() + ".\n" +
 			"\n" +

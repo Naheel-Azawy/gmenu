@@ -10,9 +10,9 @@
    + text editor
    + power menu
 5. [ ] multi-select option
-6. [-] while running, stdin can:
+6. [X] while running, stdin can:
    + [X] decide to keep json + your current parsing, or create new syntax.
-   + [ ] each item may have an ID, if a new line is fed with the same ID, replace previous one in its location.
+   + [X] each item may have an ID, if a new line is fed with the same ID, replace previous one in its location.
    + [X] change options (args)
 7. [ ] terminal items
    + an item may be a vte instance instead of an icon

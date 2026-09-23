@@ -297,3 +297,27 @@ Reboot :: exec=reboot confirm=true
 :: cmd=desktops
 EOF
 
+
+# =======================================================================
+# IX. id: a later item with a previously-seen id replaces that item in
+#     its same position, instead of being added as a new one
+# =======================================================================
+
+t "47. id: basic replace in place (watch the 2nd item change, not grow the list)" <<'EOF'
+First
+Battery: charging :: id=battery
+Third
+Battery: 80% :: id=battery exec="notify-send battery"
+EOF
+
+t "48. id: old >>json also supports id (same replace-in-place)" <<'EOF'
+>>json {"name": "Status: starting", "id": "status"}
+Unrelated item
+>>json {"name": "Status: ready", "id": "status"}
+EOF
+
+t "49. id: an empty id (id=\"\") is the same as no id -- always appends" <<'EOF'
+One :: id=""
+Two :: id=""
+EOF
+

@@ -2,6 +2,7 @@ using Gtk;
 using Gdk;
 using GLib;
 using Pango;
+using Gee;
 
 // return true to stop delegating
 delegate bool OnLaunch(Item item);
@@ -20,6 +21,11 @@ class GMenuWin : Gtk.Window {
 
 	public int ret = 0;
 	private Mutex mx = Mutex();
+
+	// Maps a non-empty Item.id to its position in `items', so push_real()
+	// can tell a later item with the same id apart from a genuinely new
+	// one and replace in place instead of appending.
+	private Gee.HashMap<string, int> id_index = new Gee.HashMap<string, int>();
 
 	// Tracks the currently-applied CSS provider so a later live update
 	// (see load_css()) can remove it before adding its replacement,
@@ -446,14 +452,25 @@ class GMenuWin : Gtk.Window {
 	}
 
 	private void push_real(Item item) {
-		item.i = this.items.length;
-		this.items += item;
-		this.items_cont.push(item);
+		if (item.id != "" && this.id_index.has_key(item.id)) {
+			int idx = this.id_index[item.id];
+			item.i = idx;
+			this.items[idx] = item;
+			this.items_cont.replace_at(idx, item);
+		} else {
+			item.i = this.items.length;
+			this.items += item;
+			this.items_cont.push(item);
+			if (item.id != "") {
+				this.id_index[item.id] = item.i;
+			}
 
-		// set initial index
-		if (this.opts.index >= 0 &&
-			this.items.length - 1 == this.opts.index) {
-			this.items_cont.select_n(this.opts.index);
+			// set initial index (an append only; a replacement doesn't
+			// change how many items there are, so this wouldn't apply)
+			if (this.opts.index >= 0 &&
+				this.items.length - 1 == this.opts.index) {
+				this.items_cont.select_n(this.opts.index);
+			}
 		}
 
 		this.show_all();

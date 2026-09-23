@@ -91,6 +91,24 @@ class ItemsContainer {
 		this.flow.insert(item.box(), -1);
 	}
 
+	// Swaps in `item's widget at the position currently held by whatever
+	// item is at `idx', for GMenuWin.push_real()'s id-based replace.
+	// Removing then inserting at the same index is a net-zero shift for
+	// every other child: nothing else's position changes. If the old
+	// widget was the selected one, the new one takes over that selection
+	// -- GTK doesn't carry it across a remove/insert on its own, since
+	// as far as it's concerned these are two unrelated widgets.
+	public void replace_at(int idx, Item item) {
+		item.win = this.win;
+		var old_child = this.flow.get_child_at_index(idx);
+		bool was_selected = old_child.is_selected();
+		this.flow.remove(old_child);
+		this.flow.insert(item.box(), idx);
+		if (was_selected) {
+			this.select_n(idx);
+		}
+	}
+
 	public FlowBoxChild? selected_child() {
 		List<unowned FlowBoxChild> c = this.win.items_cont
 			.flow.get_selected_children();

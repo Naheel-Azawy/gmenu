@@ -11,6 +11,7 @@ class Item {
     public string selected;
     public bool   terminal;
     public bool   confirm;
+	public string id            = "";
 	public string desktop_file  = null;
 	public string uninstall_cmd = "";
 
@@ -46,6 +47,7 @@ class Item {
 		this.comment  = elem.get_string_member_with_default("comment",   "");
 		this.selected = elem.get_string_member_with_default("selected",  "");
 		this.terminal = elem.get_boolean_member_with_default("terminal", false);
+		this.id       = elem.get_string_member_with_default("id",       "");
 	}
 
 	public Item.from_json_str(string json) {
