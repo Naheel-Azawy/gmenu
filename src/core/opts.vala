@@ -165,10 +165,27 @@ class Opts {
 		ctx.set_description(
 			"Input:\n" +
 			"  stdin can be any of the following when the command is (NONE)\n" +
-			"  >>j, >>json STR           insert json string\n" +
-			"  >>jfile, >>json-file STR  insert json file\n" +
-			"  >>power                   insert power options\n" +
-			"  >>desktops <STR>          insert desktop files at optional directory\n" +
+			"\n" +
+			"  [text] :: key=value key2=value2 ...\n" +
+			"    `text' (optional) becomes the item's name; what follows an\n" +
+			"    unescaped `::' is a flat, whitespace-separated key=value list\n" +
+			"    running to the end of the line (a bare or \"quoted\" key, a\n" +
+			"    bare or \"quoted\" value, no nesting; quote a value to allow\n" +
+			"    whitespace in it). A literal `::' in `text' is written `\\::'.\n" +
+			"    Keys matching an item field (name, exec, icon, icon-size,\n" +
+			"    comment, selected, terminal, confirm) set that field; `cmd'\n" +
+			"    is a directive instead of an item:\n" +
+			"      :: cmd=power                    insert power options\n" +
+			"      :: cmd=desktops dirs=<STR>      insert desktop files at optional directory\n" +
+			"      :: cmd=select index=<INT>       set initially selected item\n" +
+			"      :: cmd=json-file path=<STR>     insert items from a JSON file\n" +
+			"    Examples:\n" +
+			"      Reboot :: exec=reboot confirm=true\n" +
+			"      Firefox :: icon=firefox comment=\"Web browser\"\n" +
+			"\n" +
+			"  Deprecated, still recognized: >>j, >>json STR (insert json\n" +
+			"  string); >>jfile, >>json-file STR; >>power; >>desktops <STR>;\n" +
+			"  >>select <INT>. Prefer the syntax above in new scripts.\n" +
 			"\n" +
 			"Dims:\n" +
 			"              pixels by default\n" +

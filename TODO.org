@@ -30,6 +30,7 @@
 12. [ ] docking mode
     + turns gmenu into a lemonbar replacement
     + xorg first of course, if you can, also handle wayland
+13. [X] new syntax
 
 *Notes:*
 - the intention is to make gmenu a master layout creator for ndg and all related components

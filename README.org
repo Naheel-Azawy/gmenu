@@ -37,6 +37,32 @@ Try ~gmenu --help~ for more.
   {
       echo hi
       echo hello
+      echo howdy :: icon=application-x-addon
+      echo foo
+      echo :: cmd=power
+      echo bar
+      echo :: cmd=desktops dirs="$HOME/.local/share/applications"
+  } | gmenu --list -d 15%x39% -i 16 -sf black -sb white -n 2
+#+end_src
+[[./screenshots/dmenu-1.png]]
+
+Each line is plain text by default; ~text :: key=value key2=value2~ decorates
+it (~name~, ~exec~, ~icon~, ~icon-size~, ~comment~, ~selected~, ~terminal~,
+~confirm~), and ~cmd~ is a directive instead of an item (~power~, ~desktops~,
+~select~, ~json-file~). Values only need quoting for whitespace; quotes here
+are just normal shell quoting, so plain ~echo~/~printf~ without an outer
+wrapping quote works fine, as above, with no spacing rules to remember: ~::~
+is never special to any POSIX shell, so unlike some other marker characters
+(brackets, redirection operators, ...) it never needs quoting just to survive
+being echoed. See ~gmenu --help~ for the full syntax.
+
+The older ~>>word arg~ syntax below still works but is *deprecated*; prefer
+the one above in new scripts.
+
+#+begin_src shell-script
+  {
+      echo hi
+      echo hello
       echo '>>j {"name":"howdy","icon":"application-x-addon"}'
       echo foo
       echo '>>power'
@@ -44,7 +70,6 @@ Try ~gmenu --help~ for more.
       echo '>>desktops ~/.local/share/applications'
   } | gmenu --list -d 15%x39% -i 16 -sf black -sb white -n 2
 #+end_src
-[[./screenshots/dmenu-1.png]]
 
 ** Related links
 - [[https://tools.suckless.org/dmenu/][dmenu]]
