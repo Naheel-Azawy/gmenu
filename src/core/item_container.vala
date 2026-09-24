@@ -177,6 +177,29 @@ class ItemsContainer {
 		}
 	}
 
+	// Removes the widget at `idx' from the flowbox, for cmd=delete
+	// (GMenuWin.delete_by_id()). GTK reindexes every following child
+	// down by one on its own; the caller is responsible for keeping
+	// win.items (and every Item.i) in that same shifted order, since
+	// child2item() relies on the two staying in lockstep.
+	public void remove_at(int idx) {
+		var child = this.flow.get_child_at_index(idx);
+		if (child == null) return;
+		if (child == this.nav_cursor) {
+			this.nav_cursor = null; // would otherwise dangle
+		}
+		this.flow.remove(child);
+	}
+
+	// cmd=delete-all (GMenuWin.delete_all()).
+	public void remove_all() {
+		foreach (unowned var w in this.flow.get_children()) {
+			this.flow.remove(w);
+		}
+		this.nav_cursor = null;
+		this.update();
+	}
+
 	// The "current position" for navigation and scroll-to-selection
 	// purposes. In single mode this is the same thing as the (one)
 	// actual GTK selection. In multi mode it can't be: navigating must

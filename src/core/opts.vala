@@ -315,15 +315,21 @@ class Opts {
 			"      :: cmd=desktops dirs=<STR>      insert desktop files at optional directory\n" +
 			"      :: cmd=json-file path=<STR>     insert items from a JSON file\n" +
 			"      :: cmd=set key=value ...        change an option, mid-session\n" +
+			"      :: cmd=delete id=<STR>          remove the item with that id\n" +
+			"      :: cmd=delete-all               remove every item\n" +
 			"    Examples:\n" +
 			"      Reboot :: exec=reboot confirm=true\n" +
 			"      Firefox :: icon=firefox comment=\"Web browser\"\n" +
 			"      :: cmd=set title=\"New Title\" maxcols=3\n" +
 			"      :: cmd=set index=2\n" +
+			"      :: cmd=delete id=battery\n" +
 			"    A non-empty `id' replaces the item previously pushed with\n" +
 			"    that same id, in its same position, instead of adding a\n" +
 			"    new one -- e.g. re-sending `Battery: 80% :: id=battery'\n" +
 			"    with an updated percentage updates that one item in place.\n" +
+			"    cmd=delete id=<STR> removes it outright instead; either way,\n" +
+			"    an id that doesn't match anything is a silent no-op, not an\n" +
+			"    error.\n" +
 			"    cmd=set's keys are option names, not item fields:\n" +
 			"    " + live_settable_help() + ".\n" +
 			"\n" +

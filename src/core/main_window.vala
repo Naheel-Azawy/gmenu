@@ -568,6 +568,75 @@ class GMenuWin : Gtk.Window {
 		this.show_all();
 	}
 
+	private void delete_by_id_real(string id) {
+		if (id == "" || !this.id_index.has_key(id)) return;
+		int idx = this.id_index[id];
+		this.items_cont.remove_at(idx);
+		this.id_index.unset(id);
+
+		// every item after `idx' shifts down by one, in both the array
+		// and its own `.i', to match GTK's own reindexing of the
+		// flowbox once the widget at `idx' is gone
+		var new_items = new Item[this.items.length - 1];
+		for (int i = 0; i < this.items.length; i++) {
+			if (i == idx) continue;
+			int new_i = i < idx ? i : i - 1;
+			this.items[i].i = new_i;
+			new_items[new_i] = this.items[i];
+		}
+		this.items = new_items;
+
+		// ...and so does id_index's own record of anything past `idx'
+		var to_shift = new Gee.ArrayList<string>();
+		foreach (var k in this.id_index.keys) {
+			if (this.id_index[k] > idx) to_shift.add(k);
+		}
+		foreach (var k in to_shift) {
+			this.id_index[k] = this.id_index[k] - 1;
+		}
+
+		this.items_cont.update();
+		this.show_all();
+	}
+
+	// cmd=delete id=... (dmenu.vala's frag_dispatch_cmd()). A non-matching
+	// id is a silent no-op, the same leniency push_real()'s id-based
+	// replace already has -- e.g. a script re-sending `cmd=delete
+	// id=battery' after that item is already gone shouldn't be an error.
+	public void delete_by_id(string id) {
+		if (this.opts.sync) {
+			this.delete_by_id_real(id);
+			return;
+		}
+		GLib.Idle.add(() => {
+			mx.lock();
+			this.delete_by_id_real(id);
+			mx.unlock();
+			return false;
+		});
+	}
+
+	private void delete_all_real() {
+		this.items_cont.remove_all();
+		this.items = {};
+		this.id_index.clear();
+		this.show_all();
+	}
+
+	// cmd=delete-all (dmenu.vala's frag_dispatch_cmd()).
+	public void delete_all() {
+		if (this.opts.sync) {
+			this.delete_all_real();
+			return;
+		}
+		GLib.Idle.add(() => {
+			mx.lock();
+			this.delete_all_real();
+			mx.unlock();
+			return false;
+		});
+	}
+
 	public void push(Item item, bool loading=false) {
 		if (this.opts.sync) {
 			this.push_real(item);

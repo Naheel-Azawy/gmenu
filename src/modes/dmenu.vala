@@ -239,7 +239,9 @@ void frag_apply_item(Item item, Gee.HashMap<string, string> f) {
 	if (f.has_key("id"))        item.id       = f["id"];
 }
 
-// `cmd' takes the place of >>power, >>desktops, >>select, >>json-file.
+// `cmd' takes the place of >>power, >>desktops, >>select, >>json-file, and
+// adds two with no >> equivalent (the old syntax predates id-based items
+// entirely): delete-all, and delete id=... for one item by id.
 // (Old >>json/>>j has no equivalent here because it's no longer needed:
 // a plain fragment already sets arbitrary item fields directly. Old
 // >>select is now cmd=set index=N, alongside every other option.)
@@ -256,6 +258,15 @@ bool frag_dispatch_cmd(GMenuWin win, Gee.HashMap<string, string> f) {
 	case "json-file":
 		if (!f.has_key("path")) return false;
 		load_json_file(win, f["path"]);
+		return true;
+
+	case "delete-all":
+		win.delete_all();
+		return true;
+
+	case "delete":
+		if (!f.has_key("id")) return false;
+		win.delete_by_id(f["id"]);
 		return true;
 
 	case "set":
