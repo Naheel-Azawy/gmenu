@@ -259,6 +259,9 @@ EOF
 # =======================================================================
 # VII. Automatic fallback (no escaping needed, malformed/unrecognized
 #      just degrades to a plain-text item using the whole original line)
+#      -- except case 42, kept here deliberately as a contrast: it used
+#      to fall back too, until unquoted values learned to absorb
+#      trailing bare words (see section X below).
 # =======================================================================
 
 t "40. fallback: bare key can't start with a digit" <<'EOF'
@@ -269,7 +272,7 @@ t "41. fallback: accidental :: that doesn't parse as key=value at all" <<'EOF'
 See the docs :: over here for details
 EOF
 
-t "42. fallback: trailing content after a valid pair that isn't itself a pair" <<'EOF'
+t "42. new: trailing bare words that aren't 'key=' fold into the previous value, rather than falling back" <<'EOF'
 Trailing junk :: exec=true extra stuff after
 EOF
 
@@ -319,5 +322,34 @@ EOF
 t "49. id: an empty id (id=\"\") is the same as no id -- always appends" <<'EOF'
 One :: id=""
 Two :: id=""
+EOF
+
+
+# =======================================================================
+# X. An unquoted value can contain spaces without the producer having to
+#    quote it, as long as no later word in it happens to look exactly
+#    like "identifier=" -- a run of whitespace only ends the value if
+#    what follows really does look like the start of another key=value
+#    pair (case 42 above is the same mechanism, from the other side: an
+#    unquoted trailing word that ISN'T "key=" folds into the value
+#    rather than causing a fallback). A value that's genuinely ambiguous
+#    against that still needs explicit "..." or '...' quoting, same as
+#    ever -- most values, file paths included, don't contain "word=".
+# =======================================================================
+
+t "50. new: unquoted value with spaces, running to end of line" <<'EOF'
+my photo.jpg :: icon=/home/user/pictures/my photo.jpg
+EOF
+
+t "51. new: unquoted value with spaces, followed by another key" <<'EOF'
+my photo.jpg :: icon=/home/user/pictures/my photo.jpg comment=nice
+EOF
+
+t "52. new: unquoted value with spaces, followed by several more keys" <<'EOF'
+my file :: icon=/home/user/my folder/a file.jpg comment=hi terminal=true
+EOF
+
+t "53. fallback still applies to genuinely malformed input: a trailing key with no value at all" <<'EOF'
+Broken :: exec=true extra=
 EOF
 

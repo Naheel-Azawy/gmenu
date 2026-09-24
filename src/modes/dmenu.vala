@@ -58,9 +58,11 @@ bool parse_push_cmd_line(GMenuWin win, string line) {
 // `text' (optional) becomes the item's name. What follows an unescaped
 // `::' is a flat, whitespace-separated list of key=value pairs running
 // to the end of the line (no nesting, no commas); a bare key or "a
-// quoted one", and a bare word or a quoted string as its value -- quote
-// a value only when it needs to contain whitespace or start with a
-// quote character itself; single or double quotes both work. A literal
+// quoted one", and a bare word or a quoted string as its value. A bare
+// value can contain whitespace unquoted -- frag_read_bare() below only
+// stops at a later word that looks like `key='; quote the value (with
+// single or double quotes, both work) to disambiguate against that rare
+// case, or if it needs to start with a quote character itself. A literal
 // `::' inside `text' is written `\::'. Keys matching an Item field
 // (name, exec, icon, icon-size, comment, selected, terminal, confirm,
 // id) set that field, overriding `text' if `name' is also given. A
@@ -130,13 +132,51 @@ string? frag_parse_quoted(string frag, ref int i) {
 	return sb.str;
 }
 
-// Reads a bare (unquoted) token: everything up to the next whitespace or
-// end of string, leaving `i' right after it.
-string frag_read_bare(string frag, ref int i) {
-	int start = i;
+// True if `frag' has what looks like the start of a new "identifier="
+// key at `pos' -- the same character rules frag_parse() itself uses for
+// a bare key. frag_read_bare() below uses this to tell an unquoted
+// value's own embedded whitespace apart from the boundary before the
+// next key=value pair.
+bool frag_looks_like_key(string frag, int pos) {
 	int len = frag.length;
-	while (i < len && !frag[i].isspace()) i++;
-	return frag[start:i];
+	int i = pos;
+	if (i >= len || !(frag[i].isalpha() || frag[i] == '_')) return false;
+	i++;
+	while (i < len && (frag[i].isalnum() || frag[i] == '_' || frag[i] == '-')) i++;
+	return i < len && frag[i] == '=';
+}
+
+// Reads a bare (unquoted) token. Ordinarily this would just run to the
+// next whitespace -- but a run of whitespace only ends the value here if
+// what follows it looks like the start of another key=value pair (see
+// frag_looks_like_key() above); otherwise that whitespace is folded into
+// the value and reading carries on, all the way to end of line if
+// nothing later ever does look like a key. This is what lets an
+// unquoted value with spaces in it -- e.g. a file path a producer
+// script passed through without thinking to quote it -- still read as
+// one value instead of gmenu falling back to plain text over it, as
+// long as no later word in it happens to be exactly "identifier=".
+// A value that's genuinely ambiguous against that (rare in practice --
+// most values, paths included, don't contain "word=") still needs
+// explicit "..." or '...' quoting, same as ever.
+string frag_read_bare(string frag, ref int i) {
+	int len = frag.length;
+	int start = i;
+	int last_nonspace = i;
+	while (i < len) {
+		if (frag[i].isspace()) {
+			int j = i;
+			while (j < len && frag[j].isspace()) j++;
+			if (j >= len || frag_looks_like_key(frag, j)) {
+				break;
+			}
+			i = j;
+		} else {
+			i++;
+			last_nonspace = i;
+		}
+	}
+	return frag[start:last_nonspace];
 }
 
 // Parses a flat "key=value key2=value2 ..." list running to the end of

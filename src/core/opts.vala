@@ -304,8 +304,10 @@ class Opts {
 			"    `text' (optional) becomes the item's name; what follows an\n" +
 			"    unescaped `::' is a flat, whitespace-separated key=value list\n" +
 			"    running to the end of the line (a bare or \"quoted\" key, a\n" +
-			"    bare or \"quoted\" value, no nesting; quote a value to allow\n" +
-			"    whitespace in it). A literal `::' in `text' is written `\\::'.\n" +
+			"    bare or \"quoted\" value, no nesting). A bare value can contain\n" +
+			"    whitespace unquoted -- reading it stops only at a later word\n" +
+			"    that looks like `word='; quote the value to disambiguate\n" +
+			"    against that rare case. A literal `::' in `text' is `\\::'.\n" +
 			"    Keys matching an item field (name, exec, icon, icon-size,\n" +
 			"    comment, selected, terminal, confirm, id) set that field;\n" +
 			"    `cmd' is a directive instead of an item:\n" +

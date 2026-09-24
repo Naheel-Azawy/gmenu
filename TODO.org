@@ -31,6 +31,8 @@
     + turns gmenu into a lemonbar replacement
     + xorg first of course, if you can, also handle wayland
 13. [X] new syntax
+14. [ ] clear all cmd, and delete a specific id cmd
+15. [ ] option to add items as buttons (next to done button)
 
 *Notes:*
 - the intention is to make gmenu a master layout creator for ndg and all related components

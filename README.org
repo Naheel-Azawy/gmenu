@@ -51,12 +51,15 @@ Each line is plain text by default; ~text :: key=value key2=value2~ decorates
 it (~name~, ~exec~, ~icon~, ~icon-size~, ~comment~, ~selected~, ~terminal~,
 ~confirm~, ~id~), and ~cmd~ is a directive instead of an item (~power~,
 ~desktops~, ~json-file~, ~set~ -- the last one changes an option, e.g.
-~index~, mid-session). Values only need quoting for whitespace; quotes here
-are just normal shell quoting, so plain ~echo~/~printf~ without an outer
-wrapping quote works fine, as above, with no spacing rules to remember: ~::~
-is never special to any POSIX shell, so unlike some other marker characters
-(brackets, redirection operators, ...) it never needs quoting just to survive
-being echoed. See ~gmenu --help~ for the full syntax.
+~index~, mid-session). A value can contain spaces without quoting -- e.g. an
+unquoted file path from a script that didn't think to quote it still reads
+correctly, as long as no later word in it happens to look exactly like
+~word=~; quoting is only needed to disambiguate a value against that.
+Quotes here are just normal shell quoting, so plain ~echo~/~printf~ without
+an outer wrapping quote works fine, as above, with no spacing rules to
+remember: ~::~ is never special to any POSIX shell, so unlike some other
+marker characters (brackets, redirection operators, ...) it never needs
+quoting just to survive being echoed. See ~gmenu --help~ for the full syntax.
 
 A later item with the same ~id~ as one already shown replaces it in place,
 instead of adding a new one -- for a value that changes over time:
