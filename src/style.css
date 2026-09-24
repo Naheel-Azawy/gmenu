@@ -18,6 +18,27 @@
     margin-right:  36px;
 }
 
+#donebtn {
+    margin-bottom: 20px;
+    margin-left:   0px;
+    margin-right:  32px;
+}
+
+button {
+    background:    none;
+    border-color:  #999;
+    color:         #ccc;
+}
+
+button:hover {
+    background: #222;
+}
+
+#searchbox:focus {
+    background: #222;
+    box-shadow: none;
+}
+
 flowboxchild {
     transition-duration: 200ms;
     background-color: rgba(0, 0, 0, 0);
@@ -25,9 +46,15 @@ flowboxchild {
     color: #aaa;
     outline: none; /* https://askubuntu.com/a/1141668 */
     border-radius: 10px;
+    border: 2px solid transparent;
+    margin: 2px;
 }
 
 flowboxchild:selected {
     background-color: rgba(255, 255, 255, 0.2);
     color: #fff;
+}
+
+flowboxchild.nav-cursor {
+    border-color: rgba(255, 255, 255, 0.7);
 }

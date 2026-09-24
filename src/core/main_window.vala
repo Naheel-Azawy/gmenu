@@ -154,6 +154,19 @@ class GMenuWin : Gtk.Window {
 		this.key_press_event.connect(this.on_key);
 		this.focus_out_event.connect(this.on_focus_out);
 
+		if (this.opts.multi) {
+			// Confirmed empirically that a window-level button-press-event
+			// reliably fires for a click anywhere -- on an item, or on
+			// empty space, including space outside the flowbox's own
+			// occupied area (which a handler on the flowbox itself
+			// wouldn't see, since it only covers its own bounds). One
+			// hook here covers every case "any mouse click" needs to.
+			this.button_press_event.connect((ev) => {
+				this.items_cont.hide_nav_cursor();
+				return false; // don't consume; native click handling still applies
+			});
+		}
+
 		this.load_css();
 
 		var screen = this.get_screen();
@@ -186,7 +199,20 @@ class GMenuWin : Gtk.Window {
 			this.search_entry.set_sensitive(true);
 			this.search_entry.changed.connect(this.on_search_change);
 			this.search_entry.focus_in_event.connect(this.on_search_focus_in);
-			outer_box.pack_start(this.search_entry, false, false, 0);
+
+			if (this.opts.multi) {
+				var search_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5);
+				search_row.pack_start(this.search_entry, true, true, 0);
+
+				var done_btn = new Gtk.Button.with_label(this.opts.done);
+				done_btn.set_property("name", "donebtn");
+				done_btn.clicked.connect(() => this.items_cont.finish_multi());
+				search_row.pack_start(done_btn, false, true, 0);
+
+				outer_box.pack_start(search_row, false, false, 0);
+			} else {
+				outer_box.pack_start(this.search_entry, false, false, 0);
+			}
 		}
 
 		outer_box.pack_start(this.items_cont.box(), true, true, 0);
@@ -294,7 +320,28 @@ class GMenuWin : Gtk.Window {
 	}
 
 	private bool on_key(Gtk.Widget self, Gdk.EventKey ev) {
-		if (this.search_entry != null           &&
+		// Both guarded the same way as search's own char/backspace
+		// redirects below: only while an item, not the search box, has
+		// focus -- typing space while actually typing a search query
+		// must stay a literal space, and ctrl-a while in the entry
+		// should still mean "select all text", not "select all items".
+		if (this.opts.multi &&
+			(this.search_entry == null || !this.search_entry.has_focus) &&
+			ev.keyval == Gdk.Key.space) {
+			var focused = this.get_focus() as Gtk.FlowBoxChild;
+			if (focused != null) {
+				this.items_cont.toggle_child(focused);
+			}
+			return true;
+
+		} else if (this.opts.multi &&
+				   (this.search_entry == null || !this.search_entry.has_focus) &&
+				   (ev.state & Gdk.ModifierType.CONTROL_MASK) != 0 &&
+				   (ev.keyval == Gdk.Key.a || ev.keyval == Gdk.Key.A)) {
+			this.items_cont.toggle_select_all();
+			return true;
+
+		} else if (this.search_entry != null           &&
 			!this.search_entry.has_focus        &&
 			ev.str != null && ev.str.length > 0 &&
 			search_char_allowed(ev.str[0])) {
@@ -318,6 +365,8 @@ class GMenuWin : Gtk.Window {
 			if (txt.has_prefix("$")) {
 				system(txt[1:]);
 				main_end();
+			} else if (this.opts.multi) {
+				this.items_cont.finish_multi();
 			} else {
 				Item i = this.items_cont.selected_item();
 				if (i != null) {
@@ -351,6 +400,7 @@ class GMenuWin : Gtk.Window {
 						   ev.keyval == Gdk.Key.Up) {
 					this.items_cont.select_last();
 				}
+				this.items_cont.mark_nav_cursor(this.items_cont.selected_child());
 				return true;
 
 			} else if (ev.keyval == Gdk.Key.Left ||
@@ -359,6 +409,7 @@ class GMenuWin : Gtk.Window {
 				Item first = this.items_cont.first_item();
 				if (first == null || first.i == i.i) {
 					this.items_cont.select_last();
+					this.items_cont.mark_nav_cursor(this.items_cont.selected_child());
 					return true;
 				}
 
@@ -367,6 +418,7 @@ class GMenuWin : Gtk.Window {
 				Item last = this.items_cont.last_item();
 				if (last == null || last.i == i.i) {
 					this.items_cont.select_first();
+					this.items_cont.mark_nav_cursor(this.items_cont.selected_child());
 					return true;
 				}
 			}
@@ -387,6 +439,7 @@ class GMenuWin : Gtk.Window {
 					} else {
 						this.items_cont.select_last();
 					}
+					this.items_cont.mark_nav_cursor(this.items_cont.selected_child());
 					return true;
 				}
 
@@ -410,6 +463,45 @@ class GMenuWin : Gtk.Window {
 				}
 
 				this.items_cont.select_child(target);
+				this.items_cont.mark_nav_cursor(target);
+				return true;
+
+			} else if (this.opts.multi &&
+					   (ev.keyval == Gdk.Key.Up || ev.keyval == Gdk.Key.Down)) {
+				// Up/Down normally falls through to `return false' below
+				// and lets FlowBox's own native keynav move focus a row
+				// at a time -- confirmed empirically that this also
+				// selects the newly-focused child in MULTIPLE mode,
+				// which is exactly what navigating-without-selecting
+				// must avoid, so multi mode gets a hand-rolled version
+				// here instead, mirroring Left/Right above but moving to
+				// the closest item in the row above/below (row_neighbor()
+				// reads the real on-screen layout, not just opts.maxcols,
+				// which is only a ceiling FlowBox may reflow under).
+				var child = this.items_cont.selected_child();
+				bool forward = (ev.keyval == Gdk.Key.Down);
+
+				if (!ItemsContainer.child_shown(child)) {
+					if (forward) {
+						this.items_cont.select_first();
+					} else {
+						this.items_cont.select_last();
+					}
+					this.items_cont.mark_nav_cursor(this.items_cont.selected_child());
+					return true;
+				}
+
+				var target = this.items_cont.row_neighbor(child, forward);
+
+				if (target == null) {
+					// already at the top/bottom row: consume the key
+					// rather than falling through to native keynav,
+					// which would select whatever it focuses next
+					return true;
+				}
+
+				this.items_cont.select_child(target);
+				this.items_cont.mark_nav_cursor(target);
 				return true;
 			}
 

@@ -85,6 +85,8 @@ class Opts {
 	public bool   full     = false;
 	public bool   sync     = false;
 	public bool   floating = true; // --nofloating disables the resizable-toggle trick in main_window.vala's show_win()
+	public bool   multi    = false;
+	public string done     = "Done"; // --multi mode's Done button text
 
 	// Populated in the constructor below from ENV_VARS (defined above
 	// class Opts) -- see there for names, descriptions and defaults.
@@ -170,6 +172,9 @@ class Opts {
 			{ "nofull",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.full,      "windowed, not fullscreen (undoes --full)", null },
 			{ "floating",   0,  OptionFlags.NONE,    OptionArg.NONE,     ref this.floating,  "float the window in tiling window managers (default)", null },
 			{ "nofloating", 0,  OptionFlags.REVERSE, OptionArg.NONE,     ref this.floating,  "tile normally in tiling window managers (undoes --floating; implies --stay)", null },
+			{ "multi",      0,  OptionFlags.NONE,    OptionArg.NONE,     ref this.multi,     "select multiple items (space toggles, enter/Done finishes)", null },
+			{ "nomulti",    0,  OptionFlags.REVERSE, OptionArg.NONE,     ref this.multi,     "select a single item, click to finish (undoes --multi, default)", null },
+			{ "done",       0,  OptionFlags.NONE,    OptionArg.STRING,   ref this.done,      "text for the Done button in --multi mode", "STR" },
 			{ "sync",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.sync,      "wait for all input before showing", null },
 			{ "nosync",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.sync,      "don't wait for all input (undoes --sync)", null },
 			// collects the bare command (apps/power/yesno) plus, for

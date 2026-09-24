@@ -125,6 +125,18 @@ class Item {
 		this._box.enter_notify_event.connect(this.on_hover);
 		this._box.map.connect(this.hook_flowbox_selection);
 
+		// Single mode: a click launches, so a pointer (hand) cursor over
+		// an item signals that, matching normal link/button conventions.
+		// Multi mode: a click only selects, so the normal cursor stays --
+		// nothing to set here, that's just not overriding it.
+		if (!this.win.opts.multi) {
+			this._box.realize.connect(() => {
+				var display = this._box.get_display();
+				this._box.get_window().set_cursor(
+					new Gdk.Cursor.from_name(display, "pointer"));
+			});
+		}
+
 		if (this.desktop_file != null) {
 			this._box.button_press_event.connect (ev => {
 				if (ev.type == EventType.BUTTON_PRESS && ev.button == 3) {
@@ -252,7 +264,9 @@ class Item {
 		}
 		var flowboxchild = self.get_parent()         as FlowBoxChild;
 		var flowbox      = flowboxchild.get_parent() as FlowBox;
-		flowbox.select_child(flowboxchild);
+		if (!this.win.opts.multi) {
+			flowbox.select_child(flowboxchild);
+		}
 		return true;
 	}
 
