@@ -33,13 +33,12 @@
 13. [X] new syntax
 14. [X] clear all cmd, and delete a specific id cmd
 15. [X] option to add items as buttons (next to done button)
-16. [ ] More commands for live changes
-    - oneshot, defaults to true. If true, once items selected print and exit (current behavior). If false, print and proceed (do not exit). Add this to argv options and dmenu options.
-    - cmd=exit to manually exit.
-    - feed=<new item line>, which instead of printing, or exec, it feeds back the string value to items.
-    - redirect=path|fd, would redirects the output to the given file path, stdout, or stderr (defaults to stdout).
-    - if in --multi and --done='', then remove that button.
-17. [ ] too long mode; fixed number of items which are all visible. Scrolling visually change their content. Should match dmenu speed.
+16. [X] oneshot, defaults to true. If true, once items selected print and exit (current behavior). If false, print and proceed (do not exit). Add this to argv options and dmenu options.
+17. [X] cmd=exit to manually exit.
+18. [X] feed=<new item line>, which instead of printing, or exec, it feeds back the string value to items.
+19. [X] redirect=path|fd, would redirects the output to the given file path, stdout, or stderr (defaults to stdout).
+20. [X] if in --multi and --done='', then remove that button.
+21. [ ] too long mode; fixed number of items which are all visible. Scrolling visually change their content. Should match dmenu speed.
 
 *Notes:*
 - the intention is to make gmenu a master layout creator for ndg and all related components

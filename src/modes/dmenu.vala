@@ -65,17 +65,20 @@ bool parse_push_cmd_line(GMenuWin win, string line) {
 // case, or if it needs to start with a quote character itself. A literal
 // `::' inside `text' is written `\::'. Keys matching an Item field
 // (name, exec, icon, icon-size, comment, selected, terminal, confirm,
-// id, where) set that field, overriding `text' if `name' is also given.
-// A non-empty `id' replaces the item previously pushed with that same
-// id, in its same position, rather than adding a new one; see
+// id, where, feed) set that field, overriding `text' if `name' is also
+// given. A non-empty `id' replaces the item previously pushed with that
+// same id, in its same position, rather than adding a new one; see
 // GMenuWin.push_real(). `where' places the item: "content" (default) in
 // the normal, filtered, navigable item area, or "toolbar" as a plain
 // button (text and an optional small icon, nothing more) next to the
-// search box; see GMenuWin.push_toolbar_item(). A `cmd' key is a
-// directive instead of an item; see frag_dispatch_cmd() for the
-// recognized values. Any other key, or any parse error after `::', is
-// treated as "this wasn't this syntax after all" and falls back to a
-// plain-text item, the same as an unmatched line always has.
+// search box; see GMenuWin.push_toolbar_item(). `feed' makes launching
+// the item feed its value back in as a new line -- through this exact
+// same dispatch, recursively -- instead of printing or exec'ing; see
+// ItemsContainer.launch_now(). A `cmd' key is a directive instead of an
+// item; see frag_dispatch_cmd() for the recognized values. Any other
+// key, or any parse error after `::', is treated as "this wasn't this
+// syntax after all" and falls back to a plain-text item, the same as an
+// unmatched line always has.
 //
 // Unlike a >>-style or bracket-style marker, "::" is never special to
 // any POSIX shell (dash or bash) in any position, quoted or not, so
@@ -83,7 +86,7 @@ bool parse_push_cmd_line(GMenuWin win, string line) {
 
 const string[] FRAG_ITEM_KEYS = {
 	"name", "exec", "icon", "icon-size", "comment", "selected",
-	"terminal", "confirm", "id", "where"
+	"terminal", "confirm", "id", "where", "feed", "redirect"
 };
 const string[] FRAG_CMD_KEYS = { "cmd", "dirs", "path" };
 
@@ -241,6 +244,8 @@ void frag_apply_item(Item item, Gee.HashMap<string, string> f) {
 	if (f.has_key("confirm"))   item.confirm  = (f["confirm"] == "true");
 	if (f.has_key("id"))        item.id       = f["id"];
 	if (f.has_key("where"))     item.where    = f["where"];
+	if (f.has_key("feed"))      item.feed     = f["feed"];
+	if (f.has_key("redirect"))  item.redirect = f["redirect"];
 }
 
 // `cmd' takes the place of >>power, >>desktops, >>select, >>json-file, and
@@ -271,6 +276,15 @@ bool frag_dispatch_cmd(GMenuWin win, Gee.HashMap<string, string> f) {
 	case "delete":
 		if (!f.has_key("id")) return false;
 		win.delete_by_id(f["id"]);
+		return true;
+
+	// Manual exit for the caller side of --nooneshot: with oneshot's
+	// own exit-after-launch suppressed, this is the only remaining way
+	// to end the session (short of the user hitting Escape/losing
+	// focus). No-op difference under plain --oneshot -- just exits, as
+	// launching an item would already have.
+	case "exit":
+		main_end();
 		return true;
 
 	case "set":

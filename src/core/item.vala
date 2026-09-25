@@ -13,6 +13,8 @@ class Item {
     public bool   confirm;
 	public string id            = "";
 	public string where         = "content"; // "content" (default) or "toolbar"
+	public string feed          = null; // launching pushes this string back in as a new stdin line instead of printing/exec'ing; see dmenu.vala's frag_push_line()
+	public string redirect      = null; // null (default) means stdout; "stdout"/"stderr", a file descriptor number, or a file path otherwise -- see ItemsContainer.write_output()
 	public string desktop_file  = null;
 	public string uninstall_cmd = "";
 

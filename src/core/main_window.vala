@@ -228,7 +228,8 @@ class GMenuWin : Gtk.Window {
 			this.toolbar_row.pack_start(this.search_entry, true, true, 0);
 		}
 
-		if (this.opts.multi) {
+		if (this.opts.multi && this.opts.done != null &&
+			this.opts.done.length > 0) {
 			var done_btn = new Gtk.Button.with_label(this.opts.done);
 			done_btn.set_property("name", "donebtn");
 			done_btn.clicked.connect(() => this.items_cont.finish_multi());
@@ -369,9 +370,10 @@ class GMenuWin : Gtk.Window {
 			return true;
 
 		} else if (this.search_entry != null           &&
-			!this.search_entry.has_focus        &&
-			ev.str != null && ev.str.length > 0 &&
-			search_char_allowed(ev.str[0])) {
+				   !this.search_entry.has_focus        &&
+				   (ev.state & Gdk.ModifierType.MOD1_MASK) == 0 &&
+				   ev.str != null && ev.str.length > 0 &&
+				   search_char_allowed(ev.str[0])) {
 			this.search_entry.text += ev.str;
 			this.search_entry.grab_focus();
 			this.search_entry.set_position(-1);
@@ -379,6 +381,7 @@ class GMenuWin : Gtk.Window {
 
 		} else if (this.search_entry != null         &&
 				   !this.search_entry.has_focus      &&
+				   (ev.state & Gdk.ModifierType.MOD1_MASK) == 0 &&
 				   this.search_entry.text.length > 0 &&
 				   ev.keyval == Gdk.Key.BackSpace) {
 			this.search_entry.text = this.search_entry.text[:-1];
@@ -401,7 +404,12 @@ class GMenuWin : Gtk.Window {
 					this.items_cont.launch(i);
 				} else if (txt != null && txt.length > 0) {
 					this.items_cont.launch_first();
-					main_end();
+					// launch_first() -> launch() -> launch_now() already
+					// exits on its own when an item existed to launch and
+					// --oneshot is on; this covers the remaining case --
+					// nothing matched, so launch_now() was never reached
+					// -- while still respecting --nooneshot
+					if (this.opts.oneshot) main_end();
 				}
 			}
 			return true;

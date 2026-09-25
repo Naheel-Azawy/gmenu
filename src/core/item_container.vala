@@ -8,6 +8,18 @@ class ItemsContainer {
 	private Item first   = null;
 	private int  margins = 10;
 
+	// Destinations named by an item's `redirect' field (dmenu.vala's
+	// frag_apply_item()) are opened once and kept open for the rest of
+	// the session, keyed by the exact string given, rather than
+	// reopened (and closed) every time an item is launched -- wasteful
+	// for a file path, and outright wrong for a `redirect=<fd>' target,
+	// since closing our own handle onto an already-open fd would close
+	// that fd out from under whoever handed it to us. Plain fds, not
+	// FileStreams, are cached: FileStream is a single-owner compact
+	// type with no copy function, so Gee can't hold it as a value.
+	private static Gee.HashMap<string, int> redirect_fds =
+		new Gee.HashMap<string, int>();
+
 	// --multi mode only: the child select_child() last moved keyboard
 	// focus to, tracked so its `nav-cursor' CSS class (added below) can
 	// be moved off it and onto the next one, rather than accumulating.
@@ -374,12 +386,78 @@ class ItemsContainer {
 		}
 	}
 
+	// Writes `text' (an item's name, one per line -- the only thing
+	// gmenu itself ever prints as output) to wherever `redirect'
+	// names: null/empty/"stdout" (the default) or "stderr" go to the
+	// standard streams as before; a bare integer is an already-open
+	// file descriptor to write into directly; anything else is a file
+	// path, opened (and kept open -- see redirect_fds above) in append
+	// mode. Falls back to stdout, with a warning on stderr, if the
+	// target can't be opened.
+	private static void write_output(string text, string? redirect) {
+		if (redirect == null || redirect == "" || redirect == "stdout") {
+			print("%s\n", text);
+			return;
+		}
+		if (redirect == "stderr") {
+			stderr.printf("%s\n", text);
+			return;
+		}
+
+		int fd;
+		if (redirect_fds.has_key(redirect)) {
+			fd = redirect_fds[redirect];
+		} else {
+			int given_fd;
+			if (int.try_parse(redirect, out given_fd)) {
+				fd = given_fd; // already open, inherited from whoever launched us
+			} else {
+				fd = Posix.open(redirect,
+					Posix.O_WRONLY | Posix.O_CREAT | Posix.O_APPEND, 0644);
+				if (fd < 0) {
+					stderr.printf(
+						"gmenu: failed to open redirect target '%s', falling back to stdout\n",
+						redirect);
+					print("%s\n", text);
+					return;
+				}
+			}
+			redirect_fds[redirect] = fd;
+		}
+
+		string line = text + "\n";
+		Posix.write(fd, line, line.length);
+	}
+
 	public void launch_now(Item item) {
 		if (this.win.onlaunch != null) {
 			if (this.win.onlaunch(item)) {
 				this.win.hide();
 				return;
 			}
+		}
+
+		if (item.feed != null && item.feed.length > 0) {
+			// Feeds the value back through the same dispatch a real
+			// stdin line goes through in run_dmenu() (old `>>' syntax,
+			// then a `::' fragment -- cmd=... directives included --
+			// falling back to a plain-text item if neither matches),
+			// so `feed' can bake a whole submenu, or a cmd=... action,
+			// right onto the item that triggers it, with no driving
+			// script needed to notice the selection and push a
+			// follow-up. Never prints, execs, or exits -- regardless of
+			// --oneshot, since the point is for the session to keep
+			// going. Also clears the search box: the fed-in item(s)
+			// would otherwise risk being hidden by whatever query is
+			// still typed from finding this one.
+			if (!parse_push_cmd_line(this.win, item.feed) &&
+				!frag_push_line(this.win, item.feed)) {
+				this.win.push(new Item(item.feed), true);
+			}
+			if (this.win.search_entry != null) {
+				this.win.search_entry.text = "";
+			}
+			return;
 		}
 
 		var cmd = item.exec;
@@ -390,9 +468,15 @@ class ItemsContainer {
 				system(cmd);
 			}
 		} else {
-			print("%s\n", item.name);
+			write_output(item.name, item.redirect);
 		}
-		main_end();
+
+		// --nooneshot: stay open after printing/running the item instead
+		// of exiting, so the caller can keep this session going; see
+		// dmenu.vala's `:: cmd=exit' for how it ends explicitly then
+		if (this.win.opts.oneshot) {
+			main_end();
+		}
 	}
 
 	public void launch_first() {
@@ -445,13 +529,24 @@ class ItemsContainer {
 	public void finish_multi() {
 		var selected = this.flow.get_selected_children();
 		if (selected.length() == 0 && this.nav_cursor != null) {
-			print("%s\n", this.child2item(this.nav_cursor).name);
+			var item = this.child2item(this.nav_cursor);
+			write_output(item.name, item.redirect);
 		} else {
 			foreach (unowned var child in selected) {
-				print("%s\n", this.child2item(child).name);
+				var item = this.child2item(child);
+				write_output(item.name, item.redirect);
 			}
 		}
-		main_end();
+
+		if (this.win.opts.oneshot) {
+			main_end();
+		} else {
+			// --nooneshot: printed, but staying open -- clear the
+			// just-printed selection so the next Enter/Done starts a
+			// fresh round instead of reprinting the same items
+			this.flow.unselect_all();
+			this.hide_nav_cursor();
+		}
 	}
 
 	/* public void scroll_to(Gtk.Widget widget) {

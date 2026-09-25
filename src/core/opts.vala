@@ -63,6 +63,7 @@ const string[] LIVE_SETTABLE = {
 	"title", "dims", "css", "maxcols", "index",
 	"isize", "maxlbl", "center", "horiz",
 	"stay", "notooltip", "full", "maxtoolbar",
+	"oneshot",
 };
 
 private string live_settable_help() {
@@ -91,6 +92,7 @@ class Opts {
 	public bool   floating = true; // --nofloating disables the resizable-toggle trick in main_window.vala's show_win()
 	public bool   multi    = false;
 	public string done     = "Done"; // --multi mode's Done button text
+	public bool   oneshot  = true; // --nooneshot: print each launched item and keep running instead of exiting; see cmd=exit
 	public int    maxtoolbar = 3; // beyond this many where=toolbar items, the rest go in a "More" overflow menu
 
 	// Populated in the constructor below from ENV_VARS (defined above
@@ -183,6 +185,8 @@ class Opts {
 			{ "nomulti",    0,  OptionFlags.REVERSE, OptionArg.NONE,     ref this.multi,     "select a single item, click to finish (undoes --multi, default)", null },
 			{ "done",       0,  OptionFlags.NONE,    OptionArg.STRING,   ref this.done,      "text for the Done button in --multi mode", "STR" },
 			{ "maxtoolbar", 0,  OptionFlags.NONE,    OptionArg.INT,      ref this.maxtoolbar, "max toolbar items shown before overflowing into a More menu", "INT" },
+			{ "oneshot",    0,  OptionFlags.NONE,    OptionArg.NONE,     ref this.oneshot,   "print and exit once item(s) are selected (default)", null },
+			{ "nooneshot",  0,  OptionFlags.REVERSE, OptionArg.NONE,     ref this.oneshot,   "print and keep running instead of exiting (undoes --oneshot; see :: cmd=exit)", null },
 			{ "sync",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.sync,      "wait for all input before showing", null },
 			{ "nosync",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.sync,      "don't wait for all input (undoes --sync)", null },
 			// collects the bare command (apps/power/yesno) plus, for
@@ -218,6 +222,7 @@ class Opts {
 		case "full":      return "nofull";
 		case "center":    return "nocenter";
 		case "horiz":     return "nohoriz";
+		case "oneshot":   return "nooneshot";
 		default:          return null;
 		}
 	}
@@ -318,18 +323,22 @@ class Opts {
 			"    that looks like `word='; quote the value to disambiguate\n" +
 			"    against that rare case. A literal `::' in `text' is `\\::'.\n" +
 			"    Keys matching an item field (name, exec, icon, icon-size,\n" +
-			"    comment, selected, terminal, confirm, id, where) set that\n" +
-			"    field; `cmd' is a directive instead of an item:\n" +
+			"    comment, selected, terminal, confirm, id, where, feed,\n" +
+			"    redirect) set that field; `cmd' is a directive instead of an\n" +
+			"    item:\n" +
 			"      :: cmd=power                    insert power options\n" +
 			"      :: cmd=desktops dirs=<STR>      insert desktop files at optional directory\n" +
 			"      :: cmd=json-file path=<STR>     insert items from a JSON file\n" +
 			"      :: cmd=set key=value ...        change an option, mid-session\n" +
 			"      :: cmd=delete id=<STR>          remove the item with that id\n" +
 			"      :: cmd=delete-all               remove every item\n" +
+			"      :: cmd=exit                     exit now (mainly for --nooneshot)\n" +
 			"    Examples:\n" +
 			"      Reboot :: exec=reboot confirm=true\n" +
 			"      Firefox :: icon=firefox comment=\"Web browser\"\n" +
 			"      Refresh :: where=toolbar icon=view-refresh exec=\"kill -HUP 1\"\n" +
+			"      Power :: feed=\"Shutdown :: exec='systemctl poweroff'\"\n" +
+			"      Selected :: redirect=/tmp/gmenu-selection.log\n" +
 			"      :: cmd=set title=\"New Title\" maxcols=3\n" +
 			"      :: cmd=set index=2\n" +
 			"      :: cmd=delete id=battery\n" +
@@ -348,8 +357,28 @@ class Opts {
 			"    (underlined in its label) and F10 focuses the first one, for\n" +
 			"    keyboard-only access; beyond --maxtoolbar items, the rest\n" +
 			"    overflow into a \"More\" button's menu.\n" +
+			"    `redirect' sends this item's printed output (its name, when\n" +
+			"    it has no `exec') somewhere other than stdout: \"stdout\"\n" +
+			"    (the default) or \"stderr\" for the standard streams, a bare\n" +
+			"    integer for an already-open file descriptor, or otherwise a\n" +
+			"    file path, appended to. Has no effect on an item with `exec'\n" +
+			"    set -- that item's own command output is never touched.\n" +
+			"    `feed' makes launching the item add more items instead of\n" +
+			"    printing/running anything: its value is fed back in as one\n" +
+			"    more line, handled exactly like a real stdin line (old `>>'\n" +
+			"    syntax, a `::' fragment including `cmd=...', or, failing\n" +
+			"    both, plain text) -- so a submenu can be baked into `feed'\n" +
+			"    right on the parent item, with no driving script needed to\n" +
+			"    notice the selection and push a follow-up. Doesn't print,\n" +
+			"    exec, or exit -- the session just keeps going either way,\n" +
+			"    --oneshot included.\n" +
 			"    cmd=set's keys are option names, not item fields:\n" +
 			"    " + live_settable_help() + ".\n" +
+			"\n" +
+			"  --nooneshot keeps gmenu running after an item is launched (each\n" +
+			"  still prints as usual) instead of exiting, so a driving script can\n" +
+			"  keep pushing items and reading selections over the same session;\n" +
+			"  end it explicitly with `:: cmd=exit'.\n" +
 			"\n" +
 			"  Deprecated, still recognized: >>j, >>json STR (insert json\n" +
 			"  string); >>jfile, >>json-file STR; >>power; >>desktops <STR>;\n" +
