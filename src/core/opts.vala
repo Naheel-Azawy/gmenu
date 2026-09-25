@@ -54,6 +54,9 @@ private string env_vars_help() {
 // realized), nosearch (would mean creating a widget that was never
 // built), sync/floating/mode/list (decided once, before or at window
 // creation, with no live equivalent) are all left out on purpose.
+// noparse can't be here even in principle: reaching `cmd=set' at all
+// already requires stdin parsing to be on, so there's no line that
+// could ever mean "turn it on" once it's off.
 // dmenu.vala's frag_key_known() also reads this, so a name only ever
 // needs to be added here once.
 const string[] LIVE_SETTABLE = {
@@ -80,6 +83,7 @@ class Opts {
 	public bool   center   = false;
 	public bool   notooltip = false;
 	public bool   nosearch = false;
+	public bool   noparse  = false; // treat every stdin line as plain text; see run_dmenu()
 	public bool   stay     = false;
 	public bool   solid    = false;
 	public bool   full     = false;
@@ -87,7 +91,7 @@ class Opts {
 	public bool   floating = true; // --nofloating disables the resizable-toggle trick in main_window.vala's show_win()
 	public bool   multi    = false;
 	public string done     = "Done"; // --multi mode's Done button text
-	public int    maxtoolbar = 5; // beyond this many where=toolbar items, the rest go in a "More" overflow menu
+	public int    maxtoolbar = 3; // beyond this many where=toolbar items, the rest go in a "More" overflow menu
 
 	// Populated in the constructor below from ENV_VARS (defined above
 	// class Opts) -- see there for names, descriptions and defaults.
@@ -165,6 +169,8 @@ class Opts {
 			{ "tooltip",   0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.notooltip, "show tooltip (undoes --notooltip)", null },
 			{ "nosearch",  0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.nosearch,  "no search bar", null },
 			{ "search",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.nosearch,  "show search bar (undoes --nosearch)", null },
+			{ "noparse",   0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.noparse,   "treat every stdin line as plain text (no ::, >>, or END)", null },
+			{ "parse",     0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.noparse,   "parse :: and >> syntax in stdin (undoes --noparse, default)", null },
 			{ "stay",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.stay,      "prevent quitting when out of focus", null },
 			{ "nostay",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.stay,      "quit when out of focus (undoes --stay)", null },
 			{ "solid",     0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.solid,     "disable transparency", null },
@@ -301,6 +307,7 @@ class Opts {
 		ctx.set_description(
 			"Input:\n" +
 			"  stdin can be any of the following when the command is (NONE)\n" +
+			"  (or, with --noparse, always just plain text -- see there)\n" +
 			"\n" +
 			"  [text] :: key=value key2=value2 ...\n" +
 			"    `text' (optional) becomes the item's name; what follows an\n" +

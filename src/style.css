@@ -24,7 +24,7 @@ button:hover {
 }
 
 button:focus {
-   color:       transparent;
+   color:       black;
    background:  #aaa;
    font-weight: normal;
 }

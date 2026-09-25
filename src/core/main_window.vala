@@ -640,25 +640,30 @@ class GMenuWin : Gtk.Window {
 	}
 
 	// Picks the first letter of `name' (case-insensitively) not already
-	// in `used', escaping any literal underscore first (GTK's own
-	// doubled-underscore convention for one, so it isn't itself mistaken
-	// for a mnemonic marker) and inserting a single `_' before the
-	// chosen letter so GTK renders it underlined and Alt+letter
-	// activates its mnemonic_widget -- the typical convention for
-	// keyboard-accessible toolbar/menu actions. Returns `name' (escaped,
-	// otherwise unchanged) with no mnemonic if every letter is already
-	// taken.
-	private static string assign_mnemonic(string name, Gee.HashSet<string> used) {
-		string escaped = name.replace("_", "__");
-		for (int i = 0; i < escaped.length; i++) {
-			unichar c = escaped[i];
+	// in `used', for the typical Alt+letter convention for
+	// keyboard-accessible toolbar/menu actions. Returns it lowercased,
+	// or null if every letter is already taken. `escaped' is `name'
+	// with any literal underscore doubled first (GTK's own convention
+	// for one, so it isn't itself mistaken for a mnemonic marker) and,
+	// if a letter was found, a single `_' inserted before it -- for a
+	// widget that shows the label itself (Gtk.Label.with_mnemonic()
+	// renders that underlined and wires up Alt+letter on its own).
+	// A widget with no visible label of its own (the icon-only More
+	// button) instead uses the returned letter directly with
+	// Gdk.keyval_from_name() and Gtk.Window.add_mnemonic().
+	private static string? assign_mnemonic(string name, Gee.HashSet<string> used, out string escaped) {
+		string esc = name.replace("_", "__");
+		for (int i = 0; i < esc.length; i++) {
+			unichar c = esc[i];
 			if (!c.isalnum()) continue;
 			string lower = c.tolower().to_string();
 			if (used.contains(lower)) continue;
 			used.add(lower);
-			return escaped[:i] + "_" + escaped[i:];
+			escaped = esc[:i] + "_" + esc[i:];
+			return lower;
 		}
-		return escaped;
+		escaped = esc;
+		return null;
 	}
 
 	// Rebuilds the toolbar's item buttons from scratch out of
@@ -681,15 +686,17 @@ class GMenuWin : Gtk.Window {
 
 		var used_mnemonics = new Gee.HashSet<string>();
 		for (int i = 0; i < visible; i++) {
-			var label = assign_mnemonic(this.toolbar_items[i].name, used_mnemonics);
-			var btn = this.toolbar_items[i].toolbar_widget(label);
+			string escaped;
+			assign_mnemonic(this.toolbar_items[i].name, used_mnemonics, out escaped);
+			var btn = this.toolbar_items[i].toolbar_widget(escaped);
 			this.toolbar_row.pack_start(btn, false, false, 0);
 			this.toolbar_packed.add(btn);
 		}
 
 		if (visible < this.toolbar_items.size) {
-			var label = assign_mnemonic("More", used_mnemonics);
-			var more_btn = this.build_more_button(visible, label);
+			string escaped;
+			string? letter = assign_mnemonic("More", used_mnemonics, out escaped);
+			var more_btn = this.build_more_button(visible, letter);
 			this.toolbar_row.pack_start(more_btn, false, false, 0);
 			this.toolbar_packed.add(more_btn);
 		}
@@ -697,23 +704,48 @@ class GMenuWin : Gtk.Window {
 		this.show_all();
 	}
 
-	// The overflow button for toolbar_items[overflow_start:] -- a plain
-	// popup Gtk.Menu, one MenuItem per overflow item, opened on click
-	// (or via its own Alt+letter mnemonic, or Enter/Space once Tab/F10
-	// has focused it); arrow keys and Enter inside the open menu are
-	// standard GTK behavior, nothing extra needed for those.
-	private Gtk.Button build_more_button(int overflow_start, string display_label) {
-		var btn = new Gtk.Button.with_mnemonic(display_label);
+	// The overflow button for toolbar_items[overflow_start:] -- icon
+	// only (no label to keep it compact; "More" still reaches it as its
+	// tooltip and accessible name), opening a plain popup Gtk.Menu, one
+	// icon+label MenuItem per overflow item (Item.toolbar_menu_item()),
+	// on click. Still keyboard-reachable three ways: Tab/F10 to focus it
+	// then Enter/Space (standard button activation), or its own
+	// Alt+letter mnemonic -- registered directly via add_mnemonic()
+	// since, with no visible label here, there's no text to underline
+	// the way toolbar_widget()'s Gtk.Label.with_mnemonic() does. Arrow
+	// keys and Enter inside the open menu are standard GTK behavior,
+	// nothing extra needed for those.
+	private Gtk.Button build_more_button(int overflow_start, string? mnemonic_letter) {
+		var btn = new Gtk.Button();
 		btn.set_property("name", "moretoolbar");
+		btn.set_tooltip_text("More");
+		var icon = new Gtk.Image.from_icon_name("view-more-symbolic", Gtk.IconSize.BUTTON);
+		btn.add(icon);
+
+		if (mnemonic_letter != null) {
+			uint keyval = Gdk.keyval_from_name(mnemonic_letter);
+			if (keyval != 0) {
+				this.add_mnemonic(keyval, btn);
+			}
+		}
+
 		btn.clicked.connect(() => {
 			var menu = new Gtk.Menu();
 			for (int i = overflow_start; i < this.toolbar_items.size; i++) {
 				var it = this.toolbar_items[i];
-				var mi = new Gtk.MenuItem.with_label(it.name);
-				mi.activate.connect(() => this.items_cont.launch(it));
+				var mi = it.toolbar_menu_item();
 				menu.add(mi);
 			}
 			menu.show_all();
+
+			// Popping up the menu moves focus to it -- a separate
+			// top-level X window -- which would otherwise trigger
+			// on_focus_out()'s main_end() the same as genuinely losing
+			// focus to an unrelated window, even without --stay.
+			bool old_stay = this.opts.stay;
+			this.opts.stay = true;
+			menu.deactivate.connect(() => this.opts.stay = old_stay);
+
 			menu.popup_at_widget(btn, Gdk.Gravity.SOUTH_WEST, Gdk.Gravity.NORTH_WEST, null);
 		});
 		return btn;

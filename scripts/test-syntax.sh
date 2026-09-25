@@ -2,8 +2,10 @@
 # Manual test script for gmenu's stdin syntax.
 #
 # Covers: every old (deprecated) >>word command, every new :: syntax
-# case, escaping, quoting edge cases, the automatic-fallback cases, and
-# a mixed old+new feed to confirm compatibility.
+# case, escaping, quoting edge cases, the automatic-fallback cases, a
+# mixed old+new feed to confirm compatibility, id-based replace/delete,
+# where=toolbar items (including overflow, mnemonics, and icons), and
+# --noparse.
 #
 # Each block opens its own gmenu window. Check the item(s) shown, then
 # press Escape (or pick an item) to move on to the next block. Run the
@@ -22,8 +24,10 @@
 GMENU="${GMENU:-gmenu}"
 
 t() {
-	echo "=== $1 ==="
-	"$GMENU" --title "$1"
+	title="$1"
+	shift
+	echo "=== $title ==="
+	"$GMENU" --title "$title" "$@"
 }
 
 # --- test data for the json-file cases -------------------------------
@@ -154,8 +158,9 @@ EOF
 # IV. New syntax: cmd=set (change an option mid-session)
 #
 # LIVE_SETTABLE (opts.vala): title, dims, css, maxcols, index, isize,
-# maxlbl, center, horiz, stay, notooltip, full. Anything else -- e.g.
-# solid, or a typo -- correctly falls back rather than silently no-op'ing.
+# maxlbl, center, horiz, stay, notooltip, full, maxtoolbar. Anything
+# else -- e.g. solid, or a typo -- correctly falls back rather than
+# silently no-op'ing.
 # =======================================================================
 
 t "23. cmd=set: string option (title)" <<'EOF'
@@ -351,5 +356,121 @@ EOF
 
 t "53. fallback still applies to genuinely malformed input: a trailing key with no value at all" <<'EOF'
 Broken :: exec=true extra=
+EOF
+
+
+# =======================================================================
+# XI. where=toolbar: a plain button next to the search box instead of a
+#     normal, filtered, navigable item. Still just an item underneath --
+#     id-based replace and delete work on one exactly like they do on a
+#     content item.
+# =======================================================================
+
+t "54. where=toolbar: a button next to the search box, alongside a normal content item" <<'EOF'
+Alpha
+Refresh :: where=toolbar icon=view-refresh
+Settings :: where=toolbar
+EOF
+
+t "55. where=toolbar: id-based replace works the same as content items (position kept)" <<'EOF'
+Foo :: where=toolbar id=x
+Bar :: where=toolbar id=y
+Foo-updated :: where=toolbar id=x
+EOF
+
+t "56. where=toolbar: cmd=delete removes one by id, same as it would a content item" <<'EOF'
+Foo :: where=toolbar id=x
+Bar :: where=toolbar id=y
+:: cmd=delete id=x
+EOF
+
+
+# =======================================================================
+# XII. cmd=delete / cmd=delete-all: remove an item outright instead of
+#      replacing it. Either way, an id that doesn't match anything is a
+#      silent no-op, not an error (case 58 below).
+# =======================================================================
+
+t "57. cmd=delete: removes one content item by id" <<'EOF'
+First
+Battery: charging :: id=battery
+Third
+:: cmd=delete id=battery
+EOF
+
+t "58. cmd=delete: a non-matching id is a silent no-op, not an error" <<'EOF'
+Alpha :: id=a
+:: cmd=delete id=does-not-exist
+Still here
+EOF
+
+t "59. cmd=delete-all: clears everything, content and toolbar items alike" <<'EOF'
+Alpha
+Bravo
+One :: where=toolbar
+:: cmd=delete-all
+Fresh start
+EOF
+
+
+# =======================================================================
+# XIII. Toolbar overflow, mnemonics, and icons. --maxtoolbar defaults to
+#       3; beyond that many where=toolbar items, the rest collect behind
+#       an icon-only "More" button (hold Alt to see each visible item's
+#       underlined letter; F10 focuses the first toolbar button, then
+#       Tab/Space/Enter reach the rest, including "More", without a
+#       mouse).
+# =======================================================================
+
+t "60. --maxtoolbar: beyond the default of 3, the rest collect behind an icon-only \"More\" button" <<'EOF'
+One :: where=toolbar
+Two :: where=toolbar
+Three :: where=toolbar
+Four :: where=toolbar
+Five :: where=toolbar
+EOF
+
+# All five names start with the same letter on purpose -- stresses the
+# collision-avoidance itself, not just "does a mnemonic show up at all".
+# Hold Alt: Terminal keeps T, Text Editor falls to e, Trash to r, and so
+# on, each one landing on the first letter of its own name that's not
+# already spoken for.
+t "61. where=toolbar: Alt+letter mnemonics avoid collisions even when every name starts the same (hold Alt)" <<'EOF'
+Terminal :: where=toolbar
+Text Editor :: where=toolbar
+Trash :: where=toolbar
+EOF
+
+t "62. where=toolbar: icons show on direct buttons and inside the More menu alike" <<'EOF'
+One :: where=toolbar
+Two :: where=toolbar
+Three :: where=toolbar
+Four :: where=toolbar icon=accessories-text-editor
+Five :: where=toolbar icon=user-trash
+EOF
+
+t "63. cmd=set maxtoolbar=N: changes the overflow threshold live" <<'EOF'
+One :: where=toolbar
+Two :: where=toolbar
+Three :: where=toolbar
+Four :: where=toolbar
+Five :: where=toolbar
+:: cmd=set maxtoolbar=2
+EOF
+
+
+# =======================================================================
+# XIV. --noparse: turns off :: and >> parsing entirely -- every stdin
+#      line becomes a plain-text item, verbatim, no exceptions. Unlike
+#      the default, where a line that's just "END" stops input right
+#      there, --noparse has no such sentinel either: only actually
+#      closing stdin ends input, which is why the third line below still
+#      shows up.
+# =======================================================================
+
+t "64. --noparse: every line is plain text, including one with :: and one that's just END" --noparse <<'EOF'
+Alpha :: icon=firefox
+END
+Bravo
 EOF
 

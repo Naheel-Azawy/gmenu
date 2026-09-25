@@ -49,17 +49,18 @@ Try ~gmenu --help~ for more.
 
 Each line is plain text by default; ~text :: key=value key2=value2~ decorates
 it (~name~, ~exec~, ~icon~, ~icon-size~, ~comment~, ~selected~, ~terminal~,
-~confirm~, ~id~), and ~cmd~ is a directive instead of an item (~power~,
-~desktops~, ~json-file~, ~set~ -- the last one changes an option, e.g.
-~index~, mid-session). A value can contain spaces without quoting -- e.g. an
-unquoted file path from a script that didn't think to quote it still reads
-correctly, as long as no later word in it happens to look exactly like
-~word=~; quoting is only needed to disambiguate a value against that.
-Quotes here are just normal shell quoting, so plain ~echo~/~printf~ without
-an outer wrapping quote works fine, as above, with no spacing rules to
-remember: ~::~ is never special to any POSIX shell, so unlike some other
-marker characters (brackets, redirection operators, ...) it never needs
-quoting just to survive being echoed. See ~gmenu --help~ for the full syntax.
+~confirm~, ~id~, ~where~), and ~cmd~ is a directive instead of an item
+(~power~, ~desktops~, ~json-file~, ~set~ -- the last one changes an option,
+e.g. ~index~, mid-session; ~delete~, ~delete-all~ -- see below). A value can
+contain spaces without quoting -- e.g. an unquoted file path from a script
+that didn't think to quote it still reads correctly, as long as no later
+word in it happens to look exactly like ~word=~; quoting is only needed to
+disambiguate a value against that. Quotes here are just normal shell
+quoting, so plain ~echo~/~printf~ without an outer wrapping quote works
+fine, as above, with no spacing rules to remember: ~::~ is never special to
+any POSIX shell, so unlike some other marker characters (brackets,
+redirection operators, ...) it never needs quoting just to survive being
+echoed. See ~gmenu --help~ for the full syntax.
 
 A later item with the same ~id~ as one already shown replaces it in place,
 instead of adding a new one -- for a value that changes over time:
@@ -74,6 +75,48 @@ instead of adding a new one -- for a value that changes over time:
       done
   } | gmenu --stay
 #+end_src
+
+An item can also be removed outright instead of replaced: ~:: cmd=delete
+id=<STR>~ removes just the one with that id, ~:: cmd=delete-all~ removes
+everything. Either way, an id that doesn't match anything is a silent
+no-op, not an error.
+
+~where=toolbar~ places an item as a plain button next to the search box,
+instead of in the normal, filtered, navigable list -- for a handful of
+actions you always want at a glance rather than mixed in with what you're
+searching through. It's still just an item: ~id~-based replace and delete
+work on a toolbar item exactly like they do on a content one.
+
+#+begin_src shell-script
+  {
+      echo Alpha
+      echo Bravo
+      echo Refresh :: where=toolbar icon=view-refresh
+      echo Settings :: where=toolbar
+  } | gmenu
+#+end_src
+
+Each toolbar item gets an automatic, collision-avoiding Alt+letter mnemonic
+(hold Alt to see which letter), and F10 moves keyboard focus to the first
+one -- Tab/Space/Enter from there reach the rest, no mouse required. Beyond
+~--maxtoolbar~ items (3 by default), the rest collect behind an icon-only
+"More" button's menu instead of crowding the row, icons and all.
+
+~--multi~ turns on multi-selection: space toggles whichever item currently
+has keyboard focus, ctrl-a toggles selecting everything currently shown
+(respecting an active search filter), and a "Done" button (its text set
+with ~--done~) next to the search box finishes and prints one selected item
+per line, same as pressing enter does. Clicking, ctrl-clicking, and
+shift-clicking behave the way they would in a file manager.
+
+#+begin_src shell-script
+  printf 'Alpha\nBravo\nCharlie\n' | gmenu --multi
+#+end_src
+
+Finally, ~--noparse~ turns all of the above off: every stdin line is pushed
+as plain text, including one that would otherwise be a directive or
+contain ~::~ -- and unlike the default, a line that's just "END" is no
+longer special either, so only actually closing stdin ends input.
 
 The older ~>>word arg~ syntax below still works but is *deprecated*; prefer
 the one above in new scripts.

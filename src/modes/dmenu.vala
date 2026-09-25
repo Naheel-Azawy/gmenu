@@ -333,9 +333,11 @@ int run_dmenu(GMenuWin win) {
 	string line = "";
 	while (!stdin.eof() &&
 		   (line = stdin.read_line()) != null &&
-		   line != "END") {
-		if (parse_push_cmd_line(win, line)) continue;
-		if (frag_push_line(win, line))      continue;
+		   (win.opts.noparse || line != "END")) {
+		if (!win.opts.noparse) {
+			if (parse_push_cmd_line(win, line)) continue;
+			if (frag_push_line(win, line))      continue;
+		}
 		win.push(new Item(line), true);
 	}
 

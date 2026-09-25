@@ -151,6 +151,13 @@ class Item {
 		return this._box;
 	}
 
+	// The small icon toolbar_widget() and toolbar_menu_item() both use,
+	// or null if this item has none.
+	private Gtk.Image? toolbar_icon() {
+		if (this.icon == "") return null;
+		return this.app_image(this.icon, this.icon_sz > 0 ? this.icon_sz : 16);
+	}
+
 	// where=toolbar (GMenuWin.rebuild_toolbar()): a plain button with
 	// the item's name and, if it has an icon, a small one next to it --
 	// deliberately none of box()'s hover/selection/tooltip/right-click
@@ -165,8 +172,8 @@ class Item {
 		btn.set_property("name", "toolbaritem");
 
 		var box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5);
-		if (this.icon != "") {
-			var img = this.app_image(this.icon, this.icon_sz > 0 ? this.icon_sz : 16);
+		var img = this.toolbar_icon();
+		if (img != null) {
 			box.pack_start(img, false, false, 0);
 		}
 		var lbl = new Gtk.Label.with_mnemonic(display_label ?? this.name);
@@ -176,6 +183,28 @@ class Item {
 
 		btn.clicked.connect(() => this.win.items_cont.launch(this));
 		return btn;
+	}
+
+	// Same item, once overflowed into the "More" button's menu
+	// (GMenuWin.build_more_button()) -- the same icon+label layout as
+	// toolbar_widget(), just as a MenuItem instead of a Button, so an
+	// item looks the same whether it's currently a direct button or in
+	// the overflow menu. No mnemonic here: arrow keys and Enter inside
+	// an open Gtk.Menu are standard, built-in GTK keyboard navigation,
+	// nothing extra to wire up.
+	public Gtk.MenuItem toolbar_menu_item() {
+		var mi = new Gtk.MenuItem();
+
+		var box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5);
+		var img = this.toolbar_icon();
+		if (img != null) {
+			box.pack_start(img, false, false, 0);
+		}
+		box.pack_start(new Gtk.Label(this.name), false, false, 0);
+		mi.add(box);
+
+		mi.activate.connect(() => this.win.items_cont.launch(this));
+		return mi;
 	}
 
 	private void on_right_click() {
