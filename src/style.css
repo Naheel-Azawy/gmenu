@@ -7,21 +7,10 @@
     background:    none;
     border-color:  #999;
     color:         #ccc;
-    margin-bottom: 20px;
-    margin-left:   32px;
-    margin-right:  32px;
 }
 
 #prompt {
-    margin-bottom: 20px;
-    margin-left:   36px;
-    margin-right:  36px;
-}
-
-#donebtn {
-    margin-bottom: 20px;
-    margin-left:   0px;
-    margin-right:  32px;
+    margin-right: 24px;
 }
 
 button {
@@ -57,4 +46,10 @@ flowboxchild:selected {
 
 flowboxchild.nav-cursor {
     border-color: rgba(255, 255, 255, 0.7);
+}
+
+#toolbar {
+    margin-left:   24px;
+    margin-right:  24px;
+    margin-bottom: 12px;
 }

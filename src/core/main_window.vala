@@ -27,6 +27,25 @@ class GMenuWin : Gtk.Window {
 	// one and replace in place instead of appending.
 	private Gee.HashMap<string, int> id_index = new Gee.HashMap<string, int>();
 
+	// where=toolbar items live here instead, next to the search box --
+	// see push_toolbar_item(). Not flowbox children, so they're outside
+	// `items'/id_index entirely (child2item() relies on flowbox child
+	// index lining up with `items', which doesn't apply here) and get
+	// their own small, parallel versions of the same id-based
+	// replace/delete tracking. toolbar_buttons/toolbar_items
+	// additionally cover id-less ones, which toolbar_by_id never sees,
+	// so delete_all() can still reach every toolbar button, not just
+	// id'd ones. toolbar_items specifically: nothing else keeps the
+	// Item itself alive once push_toolbar_item() returns (a content
+	// item has `items' for that; a toolbar item has no equivalent), and
+	// a dangling one segfaulted when its button was actually clicked --
+	// confirmed with gdb, crashing inside toolbar_widget()'s own
+	// clicked closure on an Item that had already been freed.
+	private Gtk.Box? toolbar_row = null;
+	private Gee.HashMap<string, Gtk.Button> toolbar_by_id   = new Gee.HashMap<string, Gtk.Button>();
+	private Gee.ArrayList<Gtk.Button>       toolbar_buttons = new Gee.ArrayList<Gtk.Button>();
+	private Gee.ArrayList<Item>             toolbar_items   = new Gee.ArrayList<Item>();
+
 	// Tracks the currently-applied CSS provider so a later live update
 	// (see load_css()) can remove it before adding its replacement,
 	// instead of stacking providers indefinitely.
@@ -186,11 +205,14 @@ class GMenuWin : Gtk.Window {
 
 		main_container.set_property("name", "maincontainer");
 
+		this.toolbar_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5);
+		this.toolbar_row.set_property("name", "toolbar");
+
 		if (this.opts.prompt != null) {
 			var p = new Label(this.opts.prompt);
 			p.set_property("name", "prompt");
 			p.set_halign(Gtk.Align.START);
-			outer_box.pack_start(p, false, false, 0);
+			this.toolbar_row.pack_start(p, false, false, 0);
 		}
 
 		if (!this.opts.nosearch) {
@@ -199,22 +221,17 @@ class GMenuWin : Gtk.Window {
 			this.search_entry.set_sensitive(true);
 			this.search_entry.changed.connect(this.on_search_change);
 			this.search_entry.focus_in_event.connect(this.on_search_focus_in);
-
-			if (this.opts.multi) {
-				var search_row = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5);
-				search_row.pack_start(this.search_entry, true, true, 0);
-
-				var done_btn = new Gtk.Button.with_label(this.opts.done);
-				done_btn.set_property("name", "donebtn");
-				done_btn.clicked.connect(() => this.items_cont.finish_multi());
-				search_row.pack_start(done_btn, false, true, 0);
-
-				outer_box.pack_start(search_row, false, false, 0);
-			} else {
-				outer_box.pack_start(this.search_entry, false, false, 0);
-			}
+			this.toolbar_row.pack_start(this.search_entry, true, true, 0);
 		}
 
+		if (this.opts.multi) {
+			var done_btn = new Gtk.Button.with_label(this.opts.done);
+			done_btn.set_property("name", "donebtn");
+			done_btn.clicked.connect(() => this.items_cont.finish_multi());
+			this.toolbar_row.pack_start(done_btn, false, true, 0);
+		}
+
+		outer_box.pack_start(this.toolbar_row, false, false, 0);
 		outer_box.pack_start(this.items_cont.box(), true, true, 0);
 
 		main_container.pack_start(outer_box, true, true, 0);
@@ -544,6 +561,12 @@ class GMenuWin : Gtk.Window {
 	}
 
 	private void push_real(Item item) {
+		if (item.where == "toolbar") {
+			this.push_toolbar_item(item);
+			this.show_all();
+			return;
+		}
+
 		if (item.id != "" && this.id_index.has_key(item.id)) {
 			int idx = this.id_index[item.id];
 			item.i = idx;
@@ -568,8 +591,54 @@ class GMenuWin : Gtk.Window {
 		this.show_all();
 	}
 
+	// where=toolbar (dmenu.vala's frag_apply_item()). A non-empty id
+	// already in toolbar_by_id replaces that button in its same
+	// position -- reorder_child() after packing, since Gtk.Box has
+	// nothing like FlowBox's insert-at-index -- exactly mirroring
+	// push_real()'s id-based replace for content items above, just
+	// against the toolbar's own, separate tracking.
+	private void push_toolbar_item(Item item) {
+		item.win = this;
+		this.toolbar_items.add(item);
+
+		if (item.id != "" && this.toolbar_by_id.has_key(item.id)) {
+			var old_btn = this.toolbar_by_id[item.id];
+			int pos = 0;
+			foreach (unowned var w in this.toolbar_row.get_children()) {
+				if (w == old_btn) break;
+				pos++;
+			}
+			this.toolbar_row.remove(old_btn);
+			this.toolbar_buttons.remove(old_btn);
+
+			var new_btn = item.toolbar_widget();
+			this.toolbar_row.pack_start(new_btn, false, false, 0);
+			this.toolbar_row.reorder_child(new_btn, pos);
+			this.toolbar_by_id[item.id] = new_btn;
+			this.toolbar_buttons.add(new_btn);
+		} else {
+			var btn = item.toolbar_widget();
+			this.toolbar_row.pack_start(btn, false, false, 0);
+			this.toolbar_buttons.add(btn);
+			if (item.id != "") {
+				this.toolbar_by_id[item.id] = btn;
+			}
+		}
+	}
+
 	private void delete_by_id_real(string id) {
-		if (id == "" || !this.id_index.has_key(id)) return;
+		if (id == "") return;
+
+		if (this.toolbar_by_id.has_key(id)) {
+			var btn = this.toolbar_by_id[id];
+			this.toolbar_row.remove(btn);
+			this.toolbar_buttons.remove(btn);
+			this.toolbar_by_id.unset(id);
+			this.show_all();
+			return;
+		}
+
+		if (!this.id_index.has_key(id)) return;
 		int idx = this.id_index[id];
 		this.items_cont.remove_at(idx);
 		this.id_index.unset(id);
@@ -620,6 +689,13 @@ class GMenuWin : Gtk.Window {
 		this.items_cont.remove_all();
 		this.items = {};
 		this.id_index.clear();
+
+		foreach (var btn in this.toolbar_buttons) {
+			this.toolbar_row.remove(btn);
+		}
+		this.toolbar_buttons.clear();
+		this.toolbar_by_id.clear();
+
 		this.show_all();
 	}
 

@@ -358,10 +358,14 @@ class ItemsContainer {
 			var yn_win = new GMenuWin();
 			run_yesno(yn_win, item.name, yes => {
 				if (yes) {
-					// because `item' above reference if probably deleted
-					Item i = this.selected_item();
-					if (i != null) {
-						this.launch_now(i);
+					if (item.where == "toolbar") {
+						this.launch_now(item);
+					} else {
+						// because `item' above reference if probably deleted
+						Item i = this.selected_item();
+						if (i != null) {
+							this.launch_now(i);
+						}
 					}
 				} else {
 					main_end();

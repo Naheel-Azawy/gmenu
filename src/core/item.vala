@@ -12,6 +12,7 @@ class Item {
     public bool   terminal;
     public bool   confirm;
 	public string id            = "";
+	public string where         = "content"; // "content" (default) or "toolbar"
 	public string desktop_file  = null;
 	public string uninstall_cmd = "";
 
@@ -148,6 +149,29 @@ class Item {
 		}
 
 		return this._box;
+	}
+
+	// where=toolbar (GMenuWin.push_toolbar_item()): a plain button with
+	// the item's name and, if it has an icon, a small one next to it --
+	// deliberately none of box()'s hover/selection/tooltip/right-click
+	// machinery, since a toolbar button isn't part of the filtered,
+	// navigable item list. Clicking it goes through the same launch()
+	// every other item uses, so exec/terminal/confirm all behave
+	// identically; only the widget is different.
+	public Gtk.Button toolbar_widget() {
+		var btn = new Gtk.Button();
+		btn.set_property("name", "toolbaritem");
+
+		var box = new Gtk.Box(Gtk.Orientation.HORIZONTAL, 5);
+		if (this.icon != "") {
+			var img = this.app_image(this.icon, this.icon_sz > 0 ? this.icon_sz : 16);
+			box.pack_start(img, false, false, 0);
+		}
+		box.pack_start(new Gtk.Label(this.name), false, false, 0);
+		btn.add(box);
+
+		btn.clicked.connect(() => this.win.items_cont.launch(this));
+		return btn;
 	}
 
 	private void on_right_click() {

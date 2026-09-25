@@ -309,8 +309,8 @@ class Opts {
 			"    that looks like `word='; quote the value to disambiguate\n" +
 			"    against that rare case. A literal `::' in `text' is `\\::'.\n" +
 			"    Keys matching an item field (name, exec, icon, icon-size,\n" +
-			"    comment, selected, terminal, confirm, id) set that field;\n" +
-			"    `cmd' is a directive instead of an item:\n" +
+			"    comment, selected, terminal, confirm, id, where) set that\n" +
+			"    field; `cmd' is a directive instead of an item:\n" +
 			"      :: cmd=power                    insert power options\n" +
 			"      :: cmd=desktops dirs=<STR>      insert desktop files at optional directory\n" +
 			"      :: cmd=json-file path=<STR>     insert items from a JSON file\n" +
@@ -320,6 +320,7 @@ class Opts {
 			"    Examples:\n" +
 			"      Reboot :: exec=reboot confirm=true\n" +
 			"      Firefox :: icon=firefox comment=\"Web browser\"\n" +
+			"      Refresh :: where=toolbar icon=view-refresh exec=\"kill -HUP 1\"\n" +
 			"      :: cmd=set title=\"New Title\" maxcols=3\n" +
 			"      :: cmd=set index=2\n" +
 			"      :: cmd=delete id=battery\n" +
@@ -330,6 +331,11 @@ class Opts {
 			"    cmd=delete id=<STR> removes it outright instead; either way,\n" +
 			"    an id that doesn't match anything is a silent no-op, not an\n" +
 			"    error.\n" +
+			"    `where' places the item: \"content\" (default) in the normal,\n" +
+			"    filtered, navigable item area, or \"toolbar\" as a plain button\n" +
+			"    (text and an optional small icon only) next to the search\n" +
+			"    box, in the order pushed -- id-based replace and delete work\n" +
+			"    for toolbar items too.\n" +
 			"    cmd=set's keys are option names, not item fields:\n" +
 			"    " + live_settable_help() + ".\n" +
 			"\n" +
