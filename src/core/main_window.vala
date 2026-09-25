@@ -28,23 +28,24 @@ class GMenuWin : Gtk.Window {
 	private Gee.HashMap<string, int> id_index = new Gee.HashMap<string, int>();
 
 	// where=toolbar items live here instead, next to the search box --
-	// see push_toolbar_item(). Not flowbox children, so they're outside
-	// `items'/id_index entirely (child2item() relies on flowbox child
-	// index lining up with `items', which doesn't apply here) and get
-	// their own small, parallel versions of the same id-based
-	// replace/delete tracking. toolbar_buttons/toolbar_items
-	// additionally cover id-less ones, which toolbar_by_id never sees,
-	// so delete_all() can still reach every toolbar button, not just
-	// id'd ones. toolbar_items specifically: nothing else keeps the
-	// Item itself alive once push_toolbar_item() returns (a content
-	// item has `items' for that; a toolbar item has no equivalent), and
-	// a dangling one segfaulted when its button was actually clicked --
-	// confirmed with gdb, crashing inside toolbar_widget()'s own
-	// clicked closure on an Item that had already been freed.
+	// see push_toolbar_item()/rebuild_toolbar(). Not flowbox children,
+	// so they're outside `items'/id_index entirely (child2item() relies
+	// on flowbox child index lining up with `items', which doesn't apply
+	// here) and get their own small, parallel handling: toolbar_items is
+	// the ordered source of truth (push order; replace-by-id swaps an
+	// entry in place, delete removes one), rebuilt into up to
+	// opts.maxtoolbar visible buttons plus, if there are more than that,
+	// one "More" button whose menu holds the rest -- see
+	// rebuild_toolbar(). toolbar_packed is just the currently-displayed
+	// widgets, so rebuild_toolbar() can remove exactly those (and
+	// nothing else -- prompt/search/done also live in toolbar_row)
+	// before repacking. Nothing here keeps the Items themselves alive
+	// except toolbar_items: a content item has `items' for that, a
+	// toolbar item has no equivalent, and a dangling one segfaulted when
+	// its button was actually clicked (confirmed with gdb).
 	private Gtk.Box? toolbar_row = null;
-	private Gee.HashMap<string, Gtk.Button> toolbar_by_id   = new Gee.HashMap<string, Gtk.Button>();
-	private Gee.ArrayList<Gtk.Button>       toolbar_buttons = new Gee.ArrayList<Gtk.Button>();
-	private Gee.ArrayList<Item>             toolbar_items   = new Gee.ArrayList<Item>();
+	private Gee.ArrayList<Item>       toolbar_items  = new Gee.ArrayList<Item>();
+	private Gee.ArrayList<Gtk.Widget> toolbar_packed = new Gee.ArrayList<Gtk.Widget>();
 
 	// Tracks the currently-applied CSS provider so a later live update
 	// (see load_css()) can remove it before adding its replacement,
@@ -141,6 +142,9 @@ class GMenuWin : Gtk.Window {
 			break;
 		case "maxcols":
 			this.items_cont.set_maxcols(this.opts.maxcols);
+			break;
+		case "maxtoolbar":
+			this.rebuild_toolbar();
 			break;
 		case "full":
 			if (this.opts.full) {
@@ -342,8 +346,14 @@ class GMenuWin : Gtk.Window {
 		// focus -- typing space while actually typing a search query
 		// must stay a literal space, and ctrl-a while in the entry
 		// should still mean "select all text", not "select all items".
+		// Also step aside, for space and enter specifically, whenever a
+		// button currently has focus (a toolbar item, "More", or Done,
+		// all reachable via F10/Tab/Alt+letter) -- otherwise this would
+		// swallow the key before it ever reaches the button's own,
+		// native space/enter-activates-me handling.
 		if (this.opts.multi &&
 			(this.search_entry == null || !this.search_entry.has_focus) &&
+			!(this.get_focus() is Gtk.Button) &&
 			ev.keyval == Gdk.Key.space) {
 			var focused = this.get_focus() as Gtk.FlowBoxChild;
 			if (focused != null) {
@@ -377,6 +387,7 @@ class GMenuWin : Gtk.Window {
 			return true;
 
 		} else if (this.search_entry != null &&
+				   !(this.get_focus() is Gtk.Button) &&
 				   ev.keyval == Gdk.Key.Return) {
 			var txt = this.search_entry.text;
 			if (txt.has_prefix("$")) {
@@ -401,6 +412,21 @@ class GMenuWin : Gtk.Window {
 				this.search_entry.text = "";
 			} else {
 				main_end();
+			}
+			return true;
+
+		} else if (ev.keyval == Gdk.Key.F10) {
+			// The conventional key for jumping keyboard focus to a
+			// toolbar/menu bar (alongside each item's own Alt+letter
+			// mnemonic, wired up in rebuild_toolbar()). Prompt/search
+			// are skipped on purpose -- F10 targets the toolbar's own
+			// actions, and the search box already has its own,
+			// always-available path to focus (just start typing).
+			foreach (unowned var w in this.toolbar_row.get_children()) {
+				if (w is Gtk.Button) {
+					w.grab_focus();
+					break;
+				}
 			}
 			return true;
 
@@ -563,7 +589,6 @@ class GMenuWin : Gtk.Window {
 	private void push_real(Item item) {
 		if (item.where == "toolbar") {
 			this.push_toolbar_item(item);
-			this.show_all();
 			return;
 		}
 
@@ -592,50 +617,117 @@ class GMenuWin : Gtk.Window {
 	}
 
 	// where=toolbar (dmenu.vala's frag_apply_item()). A non-empty id
-	// already in toolbar_by_id replaces that button in its same
-	// position -- reorder_child() after packing, since Gtk.Box has
-	// nothing like FlowBox's insert-at-index -- exactly mirroring
-	// push_real()'s id-based replace for content items above, just
-	// against the toolbar's own, separate tracking.
+	// already present replaces that item in place (same position in
+	// toolbar_items, so the same visible-vs-overflow slot after
+	// rebuilding) instead of adding a new one -- mirroring push_real()'s
+	// id-based replace for content items, just against the toolbar's
+	// own, separate list.
 	private void push_toolbar_item(Item item) {
 		item.win = this;
-		this.toolbar_items.add(item);
 
-		if (item.id != "" && this.toolbar_by_id.has_key(item.id)) {
-			var old_btn = this.toolbar_by_id[item.id];
-			int pos = 0;
-			foreach (unowned var w in this.toolbar_row.get_children()) {
-				if (w == old_btn) break;
-				pos++;
-			}
-			this.toolbar_row.remove(old_btn);
-			this.toolbar_buttons.remove(old_btn);
-
-			var new_btn = item.toolbar_widget();
-			this.toolbar_row.pack_start(new_btn, false, false, 0);
-			this.toolbar_row.reorder_child(new_btn, pos);
-			this.toolbar_by_id[item.id] = new_btn;
-			this.toolbar_buttons.add(new_btn);
-		} else {
-			var btn = item.toolbar_widget();
-			this.toolbar_row.pack_start(btn, false, false, 0);
-			this.toolbar_buttons.add(btn);
-			if (item.id != "") {
-				this.toolbar_by_id[item.id] = btn;
+		if (item.id != "") {
+			for (int i = 0; i < this.toolbar_items.size; i++) {
+				if (this.toolbar_items[i].id == item.id) {
+					this.toolbar_items[i] = item;
+					this.rebuild_toolbar();
+					return;
+				}
 			}
 		}
+
+		this.toolbar_items.add(item);
+		this.rebuild_toolbar();
+	}
+
+	// Picks the first letter of `name' (case-insensitively) not already
+	// in `used', escaping any literal underscore first (GTK's own
+	// doubled-underscore convention for one, so it isn't itself mistaken
+	// for a mnemonic marker) and inserting a single `_' before the
+	// chosen letter so GTK renders it underlined and Alt+letter
+	// activates its mnemonic_widget -- the typical convention for
+	// keyboard-accessible toolbar/menu actions. Returns `name' (escaped,
+	// otherwise unchanged) with no mnemonic if every letter is already
+	// taken.
+	private static string assign_mnemonic(string name, Gee.HashSet<string> used) {
+		string escaped = name.replace("_", "__");
+		for (int i = 0; i < escaped.length; i++) {
+			unichar c = escaped[i];
+			if (!c.isalnum()) continue;
+			string lower = c.tolower().to_string();
+			if (used.contains(lower)) continue;
+			used.add(lower);
+			return escaped[:i] + "_" + escaped[i:];
+		}
+		return escaped;
+	}
+
+	// Rebuilds the toolbar's item buttons from scratch out of
+	// toolbar_items, the ordered source of truth -- simplest way to keep
+	// the visible-vs-overflow split, and every mnemonic letter, correct
+	// and collision-free after any push/replace/delete, given how few
+	// toolbar items there typically are. The first opts.maxtoolbar
+	// become direct buttons; the rest, if any, go into one "More"
+	// button's menu. Only removes toolbar_packed's own widgets --
+	// prompt/search/done also live in toolbar_row, untouched here.
+	private void rebuild_toolbar() {
+		foreach (var w in this.toolbar_packed) {
+			this.toolbar_row.remove(w);
+		}
+		this.toolbar_packed.clear();
+
+		int max = this.opts.maxtoolbar;
+		int visible = (max < 0 || this.toolbar_items.size <= max)
+			? this.toolbar_items.size : max;
+
+		var used_mnemonics = new Gee.HashSet<string>();
+		for (int i = 0; i < visible; i++) {
+			var label = assign_mnemonic(this.toolbar_items[i].name, used_mnemonics);
+			var btn = this.toolbar_items[i].toolbar_widget(label);
+			this.toolbar_row.pack_start(btn, false, false, 0);
+			this.toolbar_packed.add(btn);
+		}
+
+		if (visible < this.toolbar_items.size) {
+			var label = assign_mnemonic("More", used_mnemonics);
+			var more_btn = this.build_more_button(visible, label);
+			this.toolbar_row.pack_start(more_btn, false, false, 0);
+			this.toolbar_packed.add(more_btn);
+		}
+
+		this.show_all();
+	}
+
+	// The overflow button for toolbar_items[overflow_start:] -- a plain
+	// popup Gtk.Menu, one MenuItem per overflow item, opened on click
+	// (or via its own Alt+letter mnemonic, or Enter/Space once Tab/F10
+	// has focused it); arrow keys and Enter inside the open menu are
+	// standard GTK behavior, nothing extra needed for those.
+	private Gtk.Button build_more_button(int overflow_start, string display_label) {
+		var btn = new Gtk.Button.with_mnemonic(display_label);
+		btn.set_property("name", "moretoolbar");
+		btn.clicked.connect(() => {
+			var menu = new Gtk.Menu();
+			for (int i = overflow_start; i < this.toolbar_items.size; i++) {
+				var it = this.toolbar_items[i];
+				var mi = new Gtk.MenuItem.with_label(it.name);
+				mi.activate.connect(() => this.items_cont.launch(it));
+				menu.add(mi);
+			}
+			menu.show_all();
+			menu.popup_at_widget(btn, Gdk.Gravity.SOUTH_WEST, Gdk.Gravity.NORTH_WEST, null);
+		});
+		return btn;
 	}
 
 	private void delete_by_id_real(string id) {
 		if (id == "") return;
 
-		if (this.toolbar_by_id.has_key(id)) {
-			var btn = this.toolbar_by_id[id];
-			this.toolbar_row.remove(btn);
-			this.toolbar_buttons.remove(btn);
-			this.toolbar_by_id.unset(id);
-			this.show_all();
-			return;
+		for (int i = 0; i < this.toolbar_items.size; i++) {
+			if (this.toolbar_items[i].id == id) {
+				this.toolbar_items.remove_at(i);
+				this.rebuild_toolbar();
+				return;
+			}
 		}
 
 		if (!this.id_index.has_key(id)) return;
@@ -690,11 +782,8 @@ class GMenuWin : Gtk.Window {
 		this.items = {};
 		this.id_index.clear();
 
-		foreach (var btn in this.toolbar_buttons) {
-			this.toolbar_row.remove(btn);
-		}
-		this.toolbar_buttons.clear();
-		this.toolbar_by_id.clear();
+		this.toolbar_items.clear();
+		this.rebuild_toolbar();
 
 		this.show_all();
 	}

@@ -59,7 +59,7 @@ private string env_vars_help() {
 const string[] LIVE_SETTABLE = {
 	"title", "dims", "css", "maxcols", "index",
 	"isize", "maxlbl", "center", "horiz",
-	"stay", "notooltip", "full",
+	"stay", "notooltip", "full", "maxtoolbar",
 };
 
 private string live_settable_help() {
@@ -87,6 +87,7 @@ class Opts {
 	public bool   floating = true; // --nofloating disables the resizable-toggle trick in main_window.vala's show_win()
 	public bool   multi    = false;
 	public string done     = "Done"; // --multi mode's Done button text
+	public int    maxtoolbar = 5; // beyond this many where=toolbar items, the rest go in a "More" overflow menu
 
 	// Populated in the constructor below from ENV_VARS (defined above
 	// class Opts) -- see there for names, descriptions and defaults.
@@ -175,6 +176,7 @@ class Opts {
 			{ "multi",      0,  OptionFlags.NONE,    OptionArg.NONE,     ref this.multi,     "select multiple items (space toggles, enter/Done finishes)", null },
 			{ "nomulti",    0,  OptionFlags.REVERSE, OptionArg.NONE,     ref this.multi,     "select a single item, click to finish (undoes --multi, default)", null },
 			{ "done",       0,  OptionFlags.NONE,    OptionArg.STRING,   ref this.done,      "text for the Done button in --multi mode", "STR" },
+			{ "maxtoolbar", 0,  OptionFlags.NONE,    OptionArg.INT,      ref this.maxtoolbar, "max toolbar items shown before overflowing into a More menu", "INT" },
 			{ "sync",      0,   OptionFlags.NONE,    OptionArg.NONE,     ref this.sync,      "wait for all input before showing", null },
 			{ "nosync",    0,   OptionFlags.REVERSE, OptionArg.NONE,     ref this.sync,      "don't wait for all input (undoes --sync)", null },
 			// collects the bare command (apps/power/yesno) plus, for
@@ -335,7 +337,10 @@ class Opts {
 			"    filtered, navigable item area, or \"toolbar\" as a plain button\n" +
 			"    (text and an optional small icon only) next to the search\n" +
 			"    box, in the order pushed -- id-based replace and delete work\n" +
-			"    for toolbar items too.\n" +
+			"    for toolbar items too. Each gets an Alt+letter mnemonic\n" +
+			"    (underlined in its label) and F10 focuses the first one, for\n" +
+			"    keyboard-only access; beyond --maxtoolbar items, the rest\n" +
+			"    overflow into a \"More\" button's menu.\n" +
 			"    cmd=set's keys are option names, not item fields:\n" +
 			"    " + live_settable_help() + ".\n" +
 			"\n" +

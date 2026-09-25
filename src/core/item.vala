@@ -151,14 +151,16 @@ class Item {
 		return this._box;
 	}
 
-	// where=toolbar (GMenuWin.push_toolbar_item()): a plain button with
+	// where=toolbar (GMenuWin.rebuild_toolbar()): a plain button with
 	// the item's name and, if it has an icon, a small one next to it --
 	// deliberately none of box()'s hover/selection/tooltip/right-click
 	// machinery, since a toolbar button isn't part of the filtered,
-	// navigable item list. Clicking it goes through the same launch()
-	// every other item uses, so exec/terminal/confirm all behave
-	// identically; only the widget is different.
-	public Gtk.Button toolbar_widget() {
+	// navigable item list. Clicking it (or its Alt+letter mnemonic, if
+	// display_label carries one -- see GMenuWin.assign_mnemonic()) goes
+	// through the same launch() every other item uses, so
+	// exec/terminal/confirm all behave identically; only the widget is
+	// different.
+	public Gtk.Button toolbar_widget(string? display_label = null) {
 		var btn = new Gtk.Button();
 		btn.set_property("name", "toolbaritem");
 
@@ -167,7 +169,9 @@ class Item {
 			var img = this.app_image(this.icon, this.icon_sz > 0 ? this.icon_sz : 16);
 			box.pack_start(img, false, false, 0);
 		}
-		box.pack_start(new Gtk.Label(this.name), false, false, 0);
+		var lbl = new Gtk.Label.with_mnemonic(display_label ?? this.name);
+		lbl.set_mnemonic_widget(btn);
+		box.pack_start(lbl, false, false, 0);
 		btn.add(box);
 
 		btn.clicked.connect(() => this.win.items_cont.launch(this));

@@ -23,6 +23,12 @@ button:hover {
     background: #222;
 }
 
+button:focus {
+   color:       transparent;
+   background:  #aaa;
+   font-weight: normal;
+}
+
 #searchbox:focus {
     background: #222;
     box-shadow: none;
